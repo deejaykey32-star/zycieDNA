@@ -1,0 +1,1110 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Laboratorium Życia – edukacyjno-logiczna gra o DNA, białkach, bioinformatyce i biotechnologii z mówiącą przewodniczką.">
+<meta name="theme-color" content="#0a1124">
+<title>Laboratorium Życia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: fluorescence-microscope bench. Guide column (avatar + speech) beside the experiment slide; stacks on phones with the guide pinned on top.
+   Deliberately single dark theme: a stained sample glowing on a dark field, base colours follow Sanger chromatogram convention. */
+:root{
+  --bg:#0a1124; --bg2:#0f1833; --panel:#121c3a; --line:#26335f; --grid:rgba(120,140,220,.07);
+  --fg:#e9edf8; --muted:#97a3c7; --accent:#a493ff; --accent-ink:#150f34;
+  --a:#3fd98a; --t:#ff5c72; --g:#ffd04a; --c:#52aaff; --u:#ff9a3d; --p:#c9a8ff; --sug:#eef1fb;
+  --ok:#3fd98a; --bad:#ff7a8a;
+  --f-display:'Unbounded','Trebuchet MS',system-ui,sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font:400 16px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:44px 44px}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0;letter-spacing:-.01em}
+p{margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:8px 48px}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;padding-block:10px 14px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:700;font-size:1rem}
+.brand svg{width:26px;height:26px}
+.steps{display:flex;gap:6px;list-style:none;margin:0;padding:0;flex-wrap:wrap}
+.steps button{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);font:700 .78rem var(--f-mono);display:grid;place-items:center}
+.steps button:disabled{opacity:.4;cursor:default}
+.steps .done{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.steps .cur{border-color:var(--accent);color:var(--fg);box-shadow:0 0 0 3px rgba(164,147,255,.28)}
+.hud{margin-left:auto;display:flex;gap:10px;align-items:center}
+.score{font:700 .9rem var(--f-mono);font-variant-numeric:tabular-nums;color:var(--g);white-space:nowrap}
+.score small{color:var(--muted);font-weight:500}
+.pill{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 12px;font-size:.85rem;display:inline-flex;gap:6px;align-items:center}
+.pill[aria-pressed="false"]{color:var(--muted)}
+.pill svg{width:16px;height:16px}
+
+/* layout */
+.layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:20px;align-items:start}
+.guide{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.av-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.avatar{width:180px;height:auto;max-width:100%}
+.av-name{font:700 .9rem var(--f-display)}
+.av-role{font-size:.78rem;color:var(--muted)}
+.bubble{position:relative;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:.95rem;max-height:14em;overflow:auto}
+.bubble::before{content:"";position:absolute;top:-8px;left:calc(50% - 8px);width:14px;height:14px;background:var(--bg2);border-left:1px solid var(--line);border-top:1px solid var(--line);transform:rotate(45deg)}
+#bubbleText.in{animation:fadein .35s ease}
+.g-ctrl{display:flex;gap:8px;flex-wrap:wrap}
+.vnote{font-size:.76rem;color:var(--muted)}
+.vsel{display:flex;flex-direction:column;gap:4px;font-size:.76rem;color:var(--muted)}
+.vsel select{background:var(--bg2);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:6px 8px;font:500 .82rem var(--f-body);max-width:100%}
+
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* avatar animation */
+.eyes{transform-box:fill-box;transform-origin:center;animation:blink 4.8s infinite}
+@keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+.mouth-open{opacity:0;transform-box:fill-box;transform-origin:center}
+.talking .mouth-open{opacity:1;animation:talk .17s ease-in-out infinite alternate}
+.talking .mouth-closed{opacity:0}
+@keyframes talk{from{transform:scaleY(.2)}to{transform:scaleY(1)}}
+.av-head{transform-origin:100px 150px}
+.talking .av-head{animation:nod 2.2s ease-in-out infinite}
+@keyframes nod{0%,100%{transform:rotate(0)}30%{transform:rotate(-2deg)}65%{transform:rotate(1.5deg)}}
+.ring{transform-origin:100px 100px;animation:spin 18s linear infinite}
+.talking .ring{animation-duration:5s}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* stage */
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;min-width:0;display:flex;flex-direction:column;gap:18px}
+.eyebrow{font:500 .74rem var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
+.st-head{display:flex;flex-direction:column;gap:6px}
+.st-head h2{font-size:clamp(1.3rem,2.6vw,1.75rem)}
+.lesson{display:flex;flex-direction:column;gap:16px}
+.art{margin:0;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:12px;overflow-x:auto}
+.art svg{display:block;width:100%;height:auto;max-height:300px}
+.art canvas{display:block;width:100%;height:190px}
+.ltext{max-width:65ch;display:flex;flex-direction:column;gap:6px;font-size:1.05rem}
+.slnum{font:500 .8rem var(--f-mono);color:var(--muted)}
+.nav{display:flex;gap:10px;flex-wrap:wrap}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;padding:12px 18px;font-weight:600}
+.btn:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn.big{font-size:1.05rem;padding:14px 22px}
+
+/* svg vocab */
+.fP{fill:var(--p)} .fS{fill:var(--sug)} .bA{fill:var(--a)} .bT{fill:var(--t)} .bG{fill:var(--g)} .bC{fill:var(--c)} .bU{fill:var(--u)}
+.tin{fill:var(--bg);font:700 15px var(--f-mono);text-anchor:middle;dominant-baseline:central}
+.lbl{fill:var(--muted);font:500 12px var(--f-body);text-anchor:middle}
+.lbl-l{fill:var(--muted);font:500 12px var(--f-body)}
+.lbl-a{fill:var(--fg);font:600 12.5px var(--f-body);text-anchor:middle}
+.mono{font:600 13px var(--f-mono);fill:var(--fg);text-anchor:middle}
+.bl{stroke:var(--muted);stroke-width:3;fill:none}
+.hb{stroke:var(--fg);stroke-width:2;stroke-dasharray:4 4;opacity:.75}
+.ghost *{fill:none !important;stroke:var(--muted) !important;stroke-width:1.5 !important;stroke-dasharray:4 4}
+.ghost text{display:none}
+
+/* task */
+.task{display:flex;flex-direction:column;gap:16px}
+.task-head{display:flex;flex-direction:column;gap:6px}
+.task-head h3{font-size:1.12rem;font-family:var(--f-body);font-weight:600;letter-spacing:0}
+.hint{color:var(--muted);font-size:.92rem;max-width:65ch}
+.tray{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+.part{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;text-align:left;font-size:.88rem}
+.part svg{width:30px;height:30px;flex:none}
+.part:hover,.opt:hover:not(:disabled),.card:hover:not(:disabled){border-color:var(--accent)}
+.fb{min-height:1.5em;font-size:.95rem;max-width:65ch}
+.fb.ok{color:var(--ok)} .fb.bad{color:var(--bad)}
+.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+.strands-wrap{position:relative;overflow-x:auto;padding:6px 2px 10px}
+.strands{display:flex;gap:5px;width:max-content}
+.col,.ends{display:flex;flex-direction:column;align-items:center;gap:4px}
+.ends b{height:40px;display:grid;place-items:center;font:500 .8rem var(--f-mono);color:var(--muted);width:24px}
+.ends i{height:22px}
+.col.cg{margin-left:10px}
+.cell{width:36px;height:40px;border-radius:9px;display:grid;place-items:center;font:700 1rem var(--f-mono);background:var(--bg2);border:1px solid var(--line);color:var(--muted)}
+.cell.bA{background:var(--a);color:var(--bg);border-color:transparent}
+.cell.bT{background:var(--t);color:var(--bg);border-color:transparent}
+.cell.bG{background:var(--g);color:var(--bg);border-color:transparent}
+.cell.bC{background:var(--c);color:var(--bg);border-color:transparent}
+.cell.bU{background:var(--u);color:var(--bg);border-color:transparent}
+.col.cur .slot{border:2px solid var(--accent);color:var(--fg);box-shadow:0 0 0 4px rgba(164,147,255,.2)}
+.bond{height:22px;display:flex;gap:4px;justify-content:center}
+.bond i{width:2px;background:repeating-linear-gradient(var(--fg) 0 3px,transparent 3px 6px)}
+.pop{animation:pop .3s}
+@keyframes pop{0%{transform:scale(.5)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
+.keys{display:flex;gap:10px;flex-wrap:wrap}
+.key{width:58px;height:58px;border-radius:14px;border:0;font:700 1.35rem var(--f-mono);color:var(--bg)}
+.key.bA{background:var(--a)} .key.bT{background:var(--t)} .key.bG{background:var(--g)} .key.bC{background:var(--c)} .key.bU{background:var(--u)}
+.key:active{transform:scale(.94)}
+
+.quiz{display:flex;flex-direction:column;gap:10px;border-top:1px dashed var(--line);padding-top:16px}
+.quiz .q{font-weight:600;font-size:1.02rem;max-width:65ch}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;text-align:left}
+.opt.right{border-color:var(--ok);background:rgba(63,217,138,.14)}
+.opt.wrong{border-color:var(--bad);opacity:.55}
+
+.timeline{list-style:none;margin:0;padding:0;display:grid;gap:8px;counter-reset:s}
+.timeline li{display:grid;grid-template-columns:32px minmax(0,1fr);gap:10px;align-items:start;border:1px dashed var(--line);border-radius:12px;padding:10px 12px;min-height:52px;counter-increment:s}
+.timeline li::before{content:counter(s);width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--bg2);font:700 .8rem var(--f-mono);color:var(--muted)}
+.timeline li.filled{border-style:solid;border-color:var(--accent);animation:fadein .35s}
+.timeline li.filled::before{background:var(--accent);color:var(--accent-ink)}
+.timeline b{display:block}
+.timeline span{color:var(--muted);font-size:.9rem}
+.cards{display:flex;gap:8px;flex-wrap:wrap}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-weight:600}
+.card:disabled{opacity:.3;cursor:default}
+
+.mrna{display:flex;gap:8px;flex-wrap:wrap}
+.codon{font:700 1.05rem var(--f-mono);padding:8px 10px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);color:var(--u);letter-spacing:.08em}
+.codon.cur{border-color:var(--accent);box-shadow:0 0 0 3px rgba(164,147,255,.25)}
+.codon.read{opacity:.45}
+.tr-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:16px;align-items:start}
+.tr-main{display:flex;flex-direction:column;gap:12px;min-width:0}
+.cur-codon{font-size:1rem}
+.cur-codon b{font:700 1.6rem var(--f-mono);color:var(--u);letter-spacing:.1em}
+.chain{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-height:44px}
+.bead{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:700 .95rem var(--f-mono);color:var(--bg);animation:pop .35s}
+.chain .link{width:10px;height:3px;background:var(--muted)}
+.ct summary{cursor:pointer;font-weight:600;padding:4px 0}
+.ctab{overflow-x:auto}
+.ctab table{border-collapse:collapse;font:500 .76rem var(--f-mono);min-width:420px;width:100%}
+.ctab th{color:var(--accent);font-weight:700;padding:4px}
+.ctab td{border:1px solid var(--line);padding:4px 6px;vertical-align:top;line-height:1.5}
+.ctab .cd{white-space:nowrap}
+.ctab .cd b{color:var(--u)}
+.ctab .start{color:var(--a)} .ctab .stop{color:var(--t)}
+
+.align{font:700 1rem var(--f-mono)}
+.arow{display:flex;gap:3px;align-items:center;width:max-content}
+.arow .lab{width:76px;font:500 .78rem var(--f-body);color:var(--muted)}
+.ab{width:26px;height:32px;display:grid;place-items:center;border-radius:6px}
+.ab.cg{margin-left:9px}
+.ab.m{height:18px;color:var(--muted);font-size:.85rem}
+button.ab{background:var(--bg2);border:1px solid var(--line)}
+button.ab:hover{border-color:var(--accent)}
+.ab.hit{background:var(--t);color:var(--bg);border-color:transparent}
+.ab.hitref{background:var(--a);color:var(--bg)}
+.num .ab{height:16px;font-size:.66rem;color:var(--muted);font-weight:500}
+
+.result{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.result .mono-l{font:700 1.05rem var(--f-mono);letter-spacing:.06em;overflow-wrap:anywhere}
+.done-card{border:1px solid var(--accent);background:linear-gradient(135deg,rgba(164,147,255,.16),rgba(82,170,255,.06));border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px;animation:fadein .4s}
+.done-card h3{font-size:1.15rem}
+.done-card p{max-width:65ch}
+
+.org{opacity:0;transform:scale(.4);transform-box:fill-box;transform-origin:center;transition:opacity .6s,transform .7s cubic-bezier(.3,1.4,.5,1)}
+.org.on{opacity:1;transform:none}
+
+/* start + finale */
+.hero{display:flex;flex-direction:column;gap:14px}
+.hero h1{font-size:clamp(1.9rem,5vw,3.1rem);line-height:1.05}
+.hero h1 span{color:var(--accent)}
+.lead{font-size:1.08rem;color:var(--muted);max-width:60ch}
+.path{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;counter-reset:p}
+.path li{counter-increment:p;display:grid;grid-template-columns:30px minmax(0,1fr);gap:8px;align-items:start;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px}
+.path li::before{content:counter(p);width:26px;height:26px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--accent);font:700 .75rem var(--f-mono);color:var(--accent)}
+.path li.ok::before{background:var(--accent);color:var(--accent-ink)}
+.path b{display:block;font-size:.92rem}
+.path span{font-size:.78rem;color:var(--muted)}
+.cert{border:2px solid var(--g);border-radius:18px;padding:24px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;background:radial-gradient(circle at 50% 0,rgba(255,208,74,.12),transparent 70%)}
+.cert h2{font-size:clamp(1.3rem,3.5vw,2rem)}
+.cert .rank{font:700 1.2rem var(--f-display);color:var(--g)}
+.cert input{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--fg);font:600 1.1rem var(--f-body);text-align:center;width:min(320px,100%)}
+.stats{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;font-variant-numeric:tabular-nums}
+.stats div{display:flex;flex-direction:column}
+.stats b{font:700 1.5rem var(--f-mono)}
+.stats span{font-size:.8rem;color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+@media (max-width:820px){
+  .layout{grid-template-columns:1fr;gap:12px}
+  .guide{top:env(safe-area-inset-top,0px);z-index:5;display:grid;grid-template-columns:74px minmax(0,1fr);gap:4px 10px;padding:10px;border-radius:0 0 16px 16px;margin-inline:-16px;border-top:0}
+  .av-wrap{grid-row:span 2}
+  .avatar{width:74px}
+  .av-role{display:none}
+  .av-name{font-size:.7rem;text-align:center}
+  .bubble{max-height:6.4em;font-size:.88rem;padding:8px 10px}
+  .bubble::before{display:none}
+  .g-ctrl .pill{padding:4px 10px;font-size:.78rem}
+  .vnote{display:none}
+  .stage{padding:16px}
+  .tr-grid{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none !important;transition:none !important}
+}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 26 26" aria-hidden="true"><path d="M7 2c0 7 12 7 12 11S7 17 7 24" style="stroke:var(--accent);stroke-width:2.4;fill:none;stroke-linecap:round"/><path d="M19 2c0 7-12 7-12 11s12 4 12 11" style="stroke:var(--c);stroke-width:2.4;fill:none;stroke-linecap:round"/></svg>
+      Laboratorium Życia
+    </div>
+    <ol class="steps" id="steps" aria-label="Etapy kursu"></ol>
+    <div class="hud">
+      <span class="score" id="score">0 <small>pkt</small></span>
+      <button class="pill" id="voiceBtn" aria-pressed="true">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10l-4-3H2z" style="fill:currentColor"/><path id="wave" d="M11 5.5c1 1.3 1 3.7 0 5M12.8 3.8c1.9 2.3 1.9 6.1 0 8.4" style="stroke:currentColor;fill:none;stroke-width:1.4;stroke-linecap:round"/></svg>
+        <span id="voiceLbl">Lektor wł.</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="guide" aria-label="Przewodniczka">
+      <div class="av-wrap">
+        <svg class="avatar" id="avatar" viewBox="0 0 200 220" role="img" aria-label="Doktor Ada Helisa, przewodniczka">
+          <defs>
+            <radialGradient id="avglow" cx="50%" cy="45%" r="55%"><stop offset="0" stop-color="#2d2f78"/><stop offset="1" stop-color="#121c3a" stop-opacity="0"/></radialGradient>
+            <clipPath id="avclip"><circle cx="100" cy="100" r="98"/></clipPath>
+          </defs>
+          <circle cx="100" cy="100" r="98" fill="url(#avglow)"/>
+          <g class="ring" fill="none" stroke-width="2" opacity=".55">
+            <circle cx="100" cy="100" r="94" stroke="#a493ff" stroke-dasharray="3 9"/>
+            <circle cx="100" cy="6" r="4" fill="#3fd98a" stroke="none"/><circle cx="194" cy="100" r="4" fill="#ffd04a" stroke="none"/>
+            <circle cx="100" cy="194" r="4" fill="#ff5c72" stroke="none"/><circle cx="6" cy="100" r="4" fill="#52aaff" stroke="none"/>
+          </g>
+          <g clip-path="url(#avclip)">
+            <path d="M28 222C32 174 60 154 100 152C140 154 168 174 172 222Z" fill="#e8edf9"/>
+            <path d="M84 153L100 188L116 153Z" fill="#5b4fd1"/>
+            <path d="M84 153L100 188L88 204L68 162Z" fill="#cfd8f0"/>
+            <path d="M116 153L100 188L112 204L132 162Z" fill="#cfd8f0"/>
+            <rect x="128" y="186" width="20" height="16" rx="3" fill="#cfd8f0"/>
+            <path d="M132 186c4 5 8 5 12 0M132 194c4 5 8 5 12 0" stroke="#52aaff" stroke-width="1.6" fill="none"/>
+            <rect x="88" y="126" width="24" height="32" rx="9" fill="#d69d79"/>
+            <g class="av-head">
+              <path d="M54 94C50 50 76 30 102 30C132 30 152 54 148 98C147 124 140 140 132 150L68 150C58 140 54 120 54 94Z" fill="#3a231c"/>
+              <circle cx="100" cy="24" r="17" fill="#3a231c"/>
+              <path d="M88 20q12-8 24 0" stroke="#a493ff" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <ellipse cx="62" cy="98" rx="7" ry="10" fill="#e3a885"/>
+              <ellipse cx="138" cy="98" rx="7" ry="10" fill="#e3a885"/>
+              <circle cx="62" cy="110" r="3" fill="#ffd04a"/><circle cx="138" cy="110" r="3" fill="#ffd04a"/>
+              <ellipse cx="100" cy="96" rx="38" ry="45" fill="#eab590"/>
+              <path d="M61 86C62 56 84 46 103 46C124 46 141 60 140 88C130 70 114 63 99 64C84 66 70 74 61 86Z" fill="#3a231c"/>
+              <path d="M74 81Q84 75 94 80" stroke="#3a231c" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <path d="M106 80Q116 75 126 81" stroke="#3a231c" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <g class="eyes"><ellipse cx="85" cy="94" rx="4" ry="5" fill="#1b1830"/><ellipse cx="115" cy="94" rx="4" ry="5" fill="#1b1830"/><circle cx="86.5" cy="92" r="1.3" fill="#fff"/><circle cx="116.5" cy="92" r="1.3" fill="#fff"/></g>
+              <g fill="none" stroke="#a493ff" stroke-width="2.4"><rect x="71" y="84" width="27" height="20" rx="8"/><rect x="102" y="84" width="27" height="20" rx="8"/><path d="M98 92h4M71 90l-8-3M129 90l8-3"/></g>
+              <path d="M100 100Q96 110 101 112" stroke="#c98b68" fill="none" stroke-width="2" stroke-linecap="round"/>
+              <ellipse cx="78" cy="112" rx="7" ry="4" fill="#f08a8a" opacity=".35"/><ellipse cx="122" cy="112" rx="7" ry="4" fill="#f08a8a" opacity=".35"/>
+              <path class="mouth-closed" d="M89 121Q100 128 111 121" stroke="#9c3b45" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <ellipse class="mouth-open" cx="100" cy="123" rx="8" ry="5.5" fill="#7a2733"/>
+            </g>
+          </g>
+        </svg>
+        <div class="av-name">dr Ada Helisa</div>
+        <div class="av-role">genetyczka · przewodniczka kursu</div>
+      </div>
+      <div class="bubble" aria-live="polite"><p id="bubbleText">Cześć! Kliknij „Rozpocznij”, a przedstawię się i poprowadzę Cię przez laboratorium.</p></div>
+      <div class="g-ctrl">
+        <button class="pill" id="repeatBtn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2v3h-3" style="stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round"/></svg>Powtórz</button>
+        <button class="pill" id="stopBtn"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="4" width="8" height="8" rx="1.5" style="fill:currentColor"/></svg>Cisza</button>
+      </div>
+      <label class="vsel"><span>Głos lektorki</span><select id="voiceSel"><option value="__clips">Ada · nagrany głos (zalecany)</option></select></label>
+      <p class="vnote" id="vnote"></p>
+    </aside>
+
+    <main class="stage" id="stage"></main>
+  </div>
+</div>
+
+<script>
+/* ---------- helpers ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const KEY='lab-zycia-v1';
+const cssv=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+let anims=[];
+function stopAnims(){anims.forEach(f=>{try{f()}catch(e){}});anims=[];}
+function load(){try{return JSON.parse(localStorage.getItem(KEY))}catch(e){return null}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+const state=Object.assign({stage:0,done:[],score:0,mistakes:0,started:false,name:''},load()||{});
+const strip=t=>t.replace(/<[^>]+>/g,'');
+function speechify(t){
+  return strip(t)
+    .replace(/(\d)′/g,'$1 prim').replace(/′/g,' prim')
+    .replace(/→/g,' do ').replace(/[—–]/g,', ').replace(/·/g,', ')
+    .replace(/\bNGG\b/g,'en, gie, gie').replace(/\bpz\b/g,'par zasad').replace(/\bnm\b/g,'nanometra')
+    .replace(/\bdGMP\b/g,'de-gie-em-pe').replace(/\bdTMP\b/g,'de-te-em-pe')
+    .replace(/\b[ACGTU]{3,}\b/g,m=>m.split('').join(' '))
+    .replace(/\s+/g,' ').trim();
+}
+
+/* ---------- voice (lektor AI) ---------- */
+function fnv(s){let h=0x811c9dc5;for(const ch of s){h^=ch.codePointAt(0);h=Math.imul(h,0x01000193)>>>0}return h.toString(16).padStart(8,'0')}
+const CLIPS=new Set(/*CLIPS*/["01717bf5", "02d34653", "0603d2d1", "09e387c2", "0a5e16e4", "0f76ce9f", "1084e105", "10933053", "139671ac", "141b5788", "14e32ea2", "19ea2a88", "1a1d2075", "1a50ad56", "26b0face", "273201ef", "28be7e4b", "2940504c", "2a92d73a", "2ac8e0c9", "2b6e1500", "2cc7a331", "2eb5a63b", "39777da0", "3d14423a", "3d68ff7a", "3dd2d112", "3ebe8451", "4454e1e3", "468ca2a1", "46ffdb97", "48677ca2", "58ed79f1", "5ad12938", "5d3cde3d", "5e9e347e", "602b4f04", "61cb2d47", "65d9c988", "6bea920b", "6c956522", "6dbd4716", "6ea37282", "6ebcee6c", "706602a9", "70735f49", "7085c3c2", "746008ce", "74745394", "76f14ddf", "79873f09", "7a329f15", "7baaaecd", "80ceefc7", "8134d79b", "854d703a", "87dce4cb", "88c30cfe", "8bde4532", "8e56473e", "93cab6f2", "95fbd82a", "96d6d6b4", "98ea22be", "9926b3c4", "9a2770d3", "9b09cd51", "9b163926", "9cbe64b0", "9e457c09", "a4d3cafd", "a63f9408", "a815f082", "af06516a", "b74c22bc", "b7f876a6", "baff1a34", "bcacf389", "be357cef", "c20750a5", "c9a4b772", "ca3ca3e8", "ca76f0cc", "caf86c7c", "ccca78b5", "cef25a71", "d04839b2", "d1031881", "d2f4c614", "d2f6cbcc", "d6f6ce52", "d74dd8b1", "d9674d30", "db4a37c7", "def63bf8", "e1568373", "e261fa1e", "e29d31b7", "e2ba17ce", "e69dfbe5", "e711f4e1", "ead37706", "ed65259d", "f2010130", "f6c17d41", "f9cdee7a", "fb48f158", "fcac3bb7", "fcac6fd3", "ffab9181"]);
+const Voice={
+  useClips:true,a:null,src:null,bufs:new Map(),
+  on:true, ok:'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window, voice:null, timer:null, gen:0,
+  init(){
+    try{if(localStorage.getItem(KEY+'-voice')==='0')this.on=false;const vn=localStorage.getItem(KEY+'-vname');if(vn&&vn!=='__clips')this.useClips=false}catch(e){}
+    if(!this.ok){updVoiceNote();return}
+    const pick=()=>{
+      const vs=speechSynthesis.getVoices();const pl=vs.filter(v=>/^pl/i.test(v.lang));
+      const online=v=>v.localService===false||/online|natural|neural|google/i.test(v.name);
+      const fem=v=>/zofia|agnieszka|zosia|paulina|ewa|maja|alicja|google|female|kobiet/i.test(v.name);
+      let saved='';try{saved=localStorage.getItem(KEY+'-vname')||''}catch(e){}
+      this.voice=pl.find(v=>v.name===saved)
+        ||pl.find(v=>online(v)&&fem(v))||pl.find(online)
+        ||pl.find(fem)||pl[0]||null;
+      this.list=pl.slice().sort((a,b)=>online(b)-online(a));
+      const sel=$('#voiceSel');
+      if(sel){sel.innerHTML='<option value="__clips">Ada · nagrany głos (zalecany)</option>'+this.list.map(v=>`<option value="${v.name.replace(/"/g,'&quot;')}" ${!this.useClips&&v===this.voice?'selected':''}>Przeglądarka: ${v.name}${online(v)?' · online':''}</option>`).join('')}
+      updVoiceNote();
+    };
+    pick();
+    try{speechSynthesis.addEventListener('voiceschanged',pick)}catch(e){speechSynthesis.onvoiceschanged=pick}
+  },
+  stop(){this.gen++;clearTimeout(this.timer);clearTimeout(this.t2);
+    if(this.a){this.a.onplaying=this.a.onended=this.a.onerror=null;try{this.a.pause()}catch(e){}}
+    if(this.src){try{this.src.onended=null;this.src.stop()}catch(e){}this.src=null}if(this.ok){try{if(speechSynthesis.speaking||speechSynthesis.pending)speechSynthesis.cancel()}catch(e){}}talking(false)},
+  unlock(){
+    if(this.unlocked)return;this.unlocked=true;
+    try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}
+    if(!this.a){try{this.a=new Audio();this.a.src='audio/silence.mp3';const p=this.a.play();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
+    if(!this.ok)return;
+    try{speechSynthesis.resume();const u=new SpeechSynthesisUtterance(' ');u.volume=0;u.lang='pl-PL';speechSynthesis.speak(u)}catch(e){}
+  },
+  localVoice(){const pl=(this.list||[]).filter(v=>v.localService!==false&&!/online|natural|neural|google/i.test(v.name));return pl[0]||null},
+  speak(text){
+    this.stop(); if(!this.on||!text)return; const g=this.gen;
+    if(this.useClips&&CLIPS.has(fnv(text))){this.clip(fnv(text),g,text);return}
+    this.synth(text,g);
+  },
+  synth(text,g){
+    if(g!==this.gen)return;
+    if(!this.ok){this.fake(text,g);return}
+    /* Chrome gubi speak() wywołane tuż po cancel() – krótka pauza to naprawia */
+    this.t2=setTimeout(()=>this._go(text,g,this.voice,0),90);
+  },
+  clip(h,g,text){
+    let fell=false;const fall=()=>{if(fell||g!==this.gen)return;fell=true;this.clipWA(h,g,text)};
+    try{
+      const a=this.a||(this.a=new Audio());a.preload='auto';
+      a.onplaying=()=>{if(g===this.gen)talking(true)};
+      a.onended=()=>{if(g===this.gen)talking(false)};
+      a.onerror=fall;
+      a.src='audio/'+h+'.mp3';
+      const p=a.play();if(p&&p.catch)p.catch(e=>{if(!e||e.name!=='AbortError')fall()});
+    }catch(e){fall()}
+  },
+  async clipWA(h,g,text){
+    try{
+      actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+      if(actx.state==='suspended')await actx.resume();
+      let buf=this.bufs.get(h);
+      if(!buf){const r=await fetch('audio/'+h+'.mp3');if(!r.ok)throw 0;buf=await actx.decodeAudioData(await r.arrayBuffer());this.bufs.set(h,buf)}
+      if(g!==this.gen)return;
+      const s=actx.createBufferSource();s.buffer=buf;s.connect(actx.destination);
+      s.onended=()=>{if(g===this.gen)talking(false)};this.src=s;s.start();talking(true);
+    }catch(e){if(g===this.gen)this.synth(text,g)}
+  },
+  _go(text,g,voice,attempt){
+    if(g!==this.gen)return;
+    try{speechSynthesis.resume()}catch(e){}
+    const parts=(text.match(/[^.!?]+[.!?]*/g)||[text]).map(s=>s.trim()).filter(Boolean);
+    let started=false;
+    const retry=()=>{
+      if(g!==this.gen||started)return;clearTimeout(this.timer);
+      if(attempt===0){this.status='fallback';updVoiceNote();try{speechSynthesis.cancel()}catch(e){}this.t2=setTimeout(()=>this._go(text,g,this.localVoice(),1),90)}
+      else this.fake(text,g);
+    };
+    parts.forEach((p,i)=>{
+      const u=new SpeechSynthesisUtterance(p);u.lang=voice?voice.lang:'pl-PL';if(voice)u.voice=voice;u.rate=1.1;u.pitch=1.1;u.volume=1;
+      u.onstart=()=>{if(g!==this.gen)return;started=true;clearTimeout(this.timer);talking(true);if(attempt===0&&this.status!=='ok'){this.status='ok';updVoiceNote()}};
+      u.onend=()=>{if(g===this.gen&&i===parts.length-1)talking(false)};
+      u.onerror=ev=>{if(g!==this.gen)return;if(ev&&(ev.error==='interrupted'||ev.error==='canceled'))return;if(!started)retry();else if(i===parts.length-1)talking(false)};
+      try{speechSynthesis.speak(u)}catch(e){retry()}
+    });
+    this.timer=setTimeout(retry,attempt===0?4500:2500);
+  },
+  fake(text,g){talking(true);this.timer=setTimeout(()=>{if(g===this.gen)talking(false)},Math.min(15000,500+text.length*55))}
+};
+function talking(on){$('#avatar').classList.toggle('talking',!!on)}
+function updVoiceNote(){
+  const n=$('#vnote');
+  if(Voice.useClips){n.textContent='Głos lektorki: nagrania, tempo 1,1×. Działa też na telefonie.';return}
+  if(!Voice.ok)n.textContent='Ta przeglądarka nie udostępnia syntezy mowy. Teksty lektora wyświetlam w dymku.';
+  else if(!Voice.voice)n.textContent='Brak polskiego głosu w systemie: lektor użyje głosu domyślnego. Tekst zawsze widać w dymku.';
+  else if(Voice.status==='fallback')n.textContent='Głos online nie odpowiedział (sprawdź internet), więc czytam głosem lokalnym.';
+  else n.textContent=(Voice.voice.localService===false||/online|natural|neural|google/i.test(Voice.voice.name))?'Głos online, tempo 1,1×':'Brak głosu online w tej przeglądarce: używam lokalnego. Głosy online mają Edge i Chrome.';
+}
+function setVoice(on){
+  Voice.on=on; try{localStorage.setItem(KEY+'-voice',on?'1':'0')}catch(e){}
+  const b=$('#voiceBtn'); b.setAttribute('aria-pressed',on); $('#voiceLbl').textContent=on?'Lektor wł.':'Lektor wył.'; $('#wave').style.display=on?'':'none';
+  if(!on)Voice.stop(); else Voice.speak(speechify(Guide.lastS));
+}
+let actx=null;
+function sfx(ok){
+  if(!Voice.on)return;
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(),g=actx.createGain(),t=actx.currentTime;
+    o.type=ok?'sine':'triangle';
+    if(ok){o.frequency.setValueAtTime(660,t);o.frequency.exponentialRampToValueAtTime(990,t+.12)}
+    else{o.frequency.setValueAtTime(240,t);o.frequency.exponentialRampToValueAtTime(150,t+.2)}
+    g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.09,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+.26);
+    o.connect(g).connect(actx.destination);o.start(t);o.stop(t+.3);
+  }catch(e){}
+}
+
+/* ---------- guide ---------- */
+const Guide={
+  last:'',lastS:'',
+  say(bubble,speech){
+    this.last=bubble; this.lastS=speech||bubble;
+    const b=$('#bubbleText'); b.classList.remove('in'); void b.offsetWidth; b.innerHTML=bubble; b.classList.add('in');
+    Voice.speak(speechify(this.lastS));
+  }
+};
+
+/* ---------- scoring / feedback ---------- */
+function fb(scope,text,cls){const p=scope.querySelector('.fb');if(!p)return;p.textContent=text||'';p.className='fb'+(cls?' '+cls:'')}
+const api={
+  good(p=10){state.score+=p;save();updHUD();sfx(true)},
+  bad(msg,scope){
+    state.mistakes++;save();sfx(false);
+    if(scope){fb(scope,msg,'bad');const p=scope.querySelector('.fb');if(p){p.classList.remove('shake');void p.offsetWidth;p.classList.add('shake')}}
+    Guide.say(msg);
+  }
+};
+function addNext(where,fn,label='Dalej'){
+  const b=document.createElement('button');b.className='btn';b.textContent=label;
+  b.addEventListener('click',()=>{b.remove();fn()});where.appendChild(b);b.focus({preventScroll:true});
+}
+function head(k,t,h){return `<div class="task-head"><p class="eyebrow">${k}</p><h3>${t}</h3>${h?`<p class="hint">${h}</p>`:''}</div>`}
+function quiz(el,o,next){
+  const box=document.createElement('div');box.className='quiz';
+  box.innerHTML=`<p class="q">${o.q}</p><div class="opts">${o.opts.map((x,i)=>`<button class="opt" data-i="${i}">${x}</button>`).join('')}</div><p class="fb" aria-live="polite"></p><div class="qn"></div>`;
+  el.appendChild(box);
+  if(o.speak!==false)Guide.say(o.q);
+  box.querySelector('.opts').addEventListener('click',e=>{
+    const b=e.target.closest('.opt');if(!b||box.dataset.done||b.disabled)return;const i=+b.dataset.i;
+    if(i===o.ok){
+      b.classList.add('right');box.dataset.done=1;$$('.opt',box).forEach(x=>x.disabled=true);
+      api.good();fb(box,o.why,'ok');Guide.say(o.why,o.whyS);
+      if(o.after)o.after(box);
+      addNext(box.querySelector('.qn'),next);
+    }else{b.classList.add('wrong');b.disabled=true;api.bad((o.wrong&&o.wrong[i])||'Jeszcze nie. Spróbuj ponownie.',box)}
+  });
+  setTimeout(()=>box.scrollIntoView({behavior:RM?'auto':'smooth',block:'nearest'}),60);
+}
+
+/* ---------- SVG building blocks ---------- */
+const rad=d=>d*Math.PI/180;
+function poly(cx,cy,r,n,start){let p=[];for(let k=0;k<n;k++){const a=rad(start+360/n*k);p.push((cx+r*Math.cos(a)).toFixed(1)+','+(cy+r*Math.sin(a)).toFixed(1))}return p.join(' ')}
+const PUR=b=>b==='A'||b==='G';
+function baseShape(b,left,cy,r){
+  if(PUR(b)){
+    const cx=left+2.404*r,pcx=cx-1.554*r;
+    return {cx,svg:`<polygon points="${poly(pcx,cy,r*.85,5,180)}" class="b${b}"/><polygon points="${poly(cx,cy,r,6,30)}" class="b${b}"/><text x="${cx}" y="${cy}" class="tin">${b}</text>`};
+  }
+  const cx=left+.866*r;
+  return {cx,svg:`<polygon points="${poly(cx,cy,r,6,30)}" class="b${b}"/><text x="${cx}" y="${cy}" class="tin">${b}</text>`};
+}
+function nuc(b,filled=3){
+  const base=baseShape(b,232,92,24);
+  return `<svg viewBox="0 0 360 180" role="img" aria-label="Schemat nukleotydu">
+  <g class="${filled>1?'':'ghost'}"><path d="M80 96L126 93.5" class="bl"/></g>
+  <g class="${filled>2?'':'ghost'}"><path d="M190 93.5L232 92" class="bl"/></g>
+  <g class="${filled>0?'':'ghost'}"><circle cx="54" cy="96" r="26" class="fP"/><text x="54" y="96" class="tin">P</text></g>
+  <g class="${filled>1?'':'ghost'}"><polygon points="${poly(158,104,34,5,-90)}" class="fS"/><text x="158" y="106" class="tin">dR</text><text x="120" y="80" class="lbl">5′</text><text x="198" y="80" class="lbl">1′</text></g>
+  <g class="${filled>2?'':'ghost'}">${base.svg}</g>
+  <text x="54" y="160" class="lbl">fosforan</text><text x="158" y="160" class="lbl">deoksyryboza</text><text x="${base.cx}" y="160" class="lbl">zasada azotowa</text>
+  </svg>`;
+}
+function partIcon(k){
+  if(k==='P')return `<svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" class="fP"/><text x="18" y="18" class="tin" style="font-size:12px">P</text></svg>`;
+  if(k==='dR')return `<svg viewBox="0 0 36 36"><polygon points="${poly(18,19,15,5,-90)}" class="fS"/></svg>`;
+  if(k==='R')return `<svg viewBox="0 0 36 36"><polygon points="${poly(18,19,15,5,-90)}" class="fS"/><text x="25" y="29" class="tin" style="font-size:8px">OH</text></svg>`;
+  return `<svg viewBox="0 0 36 36"><polygon points="${poly(18,18,15,6,30)}" class="b${k}"/><text x="18" y="18" class="tin" style="font-size:13px">${k}</text></svg>`;
+}
+
+/* ---------- animated helix (canvas) ---------- */
+function helix(cv,seq){
+  const ctx=cv.getContext('2d');let w=0,h=0,raf=0,t=0;
+  const comp={A:'T',T:'A',G:'C',C:'G'};
+  const col={A:cssv('--a'),T:cssv('--t'),G:cssv('--g'),C:cssv('--c')},s1=cssv('--p'),s2=cssv('--c');
+  function size(){const d=Math.min(2,devicePixelRatio||1);w=cv.clientWidth;h=cv.clientHeight;cv.width=w*d;cv.height=h*d;ctx.setTransform(d,0,0,d,0,0)}
+  size();const ro=new ResizeObserver(size);ro.observe(cv);
+  function draw(){
+    ctx.clearRect(0,0,w,h);
+    const n=seq.length,amp=h*.32,mid=h/2,step=w/(n+1);
+    for(let i=0;i<n;i++){
+      const x=step*(i+1),ph=i*.62+t,y1=mid+Math.sin(ph)*amp,y2=mid-Math.sin(ph)*amp,dep=(Math.cos(ph)+1)/2;
+      ctx.globalAlpha=.35+.65*dep;ctx.lineWidth=Math.max(2,step*.32);ctx.lineCap='round';
+      ctx.strokeStyle=col[seq[i]];ctx.beginPath();ctx.moveTo(x,y1);ctx.lineTo(x,mid);ctx.stroke();
+      ctx.strokeStyle=col[comp[seq[i]]];ctx.beginPath();ctx.moveTo(x,mid);ctx.lineTo(x,y2);ctx.stroke();
+    }
+    [[s1,1],[s2,-1]].forEach(([c,sg])=>{
+      for(let x=0;x<w;x+=3){
+        const ph=(x/step-1)*.62+t,y=mid+sg*Math.sin(ph)*amp,dep=(sg*Math.cos(ph)+1)/2;
+        ctx.globalAlpha=.25+.75*dep;ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,2+2.6*dep,0,7);ctx.fill();
+      }
+    });
+    ctx.globalAlpha=1;
+    if(!RM){t+=.013;raf=requestAnimationFrame(draw)}
+  }
+  draw();
+  anims.push(()=>{cancelAnimationFrame(raf);ro.disconnect()});
+}
+function hydrate(root){$$('canvas[data-helix]',root).forEach(c=>helix(c,c.dataset.helix))}
+
+/* ---------- lesson illustrations ---------- */
+const artHelix=s=>`<canvas data-helix="${s}" role="img" aria-label="Animowana podwójna helisa DNA"></canvas>`;
+function artBases(){
+  const A=baseShape('A',8,64,24),G=baseShape('G',98,64,24),T=baseShape('T',218,64,24),C=baseShape('C',290,64,24);
+  return `<svg viewBox="0 0 360 170" role="img" aria-label="Cztery zasady azotowe">${A.svg}${G.svg}${T.svg}${C.svg}
+  <text x="${A.cx-16}" y="112" class="lbl-a">adenina</text><text x="${G.cx-16}" y="112" class="lbl-a">guanina</text>
+  <text x="${T.cx}" y="112" class="lbl-a">tymina</text><text x="${C.cx}" y="112" class="lbl-a">cytozyna</text>
+  <path d="M200 30V150" style="stroke:var(--line);stroke-width:1.5;stroke-dasharray:4 4"/>
+  <text x="96" y="148" class="lbl">PURYNY · 2 pierścienie</text><text x="276" y="148" class="lbl">PIRYMIDYNY · 1 pierścień</text></svg>`;
+}
+function artPairs(){
+  const A=baseShape('A',30,52,24),T=baseShape('T',252,52,24),G=baseShape('G',30,134,24),C=baseShape('C',252,134,24);
+  return `<svg viewBox="0 0 360 200" role="img" aria-label="Pary zasad A-T i G-C">${A.svg}${T.svg}${G.svg}${C.svg}
+  <path d="M116 45H246M116 59H246" class="hb"/><path d="M116 124H246M116 134H246M116 144H246" class="hb"/>
+  <text x="181" y="86" class="lbl">A = T · 2 wiązania wodorowe</text><text x="181" y="186" class="lbl">G ≡ C · 3 wiązania wodorowe</text></svg>`;
+}
+function artTurn(){
+  return `<svg viewBox="0 0 360 170" role="img" aria-label="Wymiary helisy">
+  ${Array.from({length:22},(_,i)=>{const x=20+i*15,y1=85+Math.sin(i*.6)*48,y2=85-Math.sin(i*.6)*48,c=['bA','bG','bT','bC'][i%4];return `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" style="stroke:var(--${['a','g','t','c'][i%4]});stroke-width:6;opacity:.8"/>`}).join('')}
+  <path d="${Array.from({length:111},(_,i)=>{const x=20+i*3,y=85+Math.sin((x-20)/15*.6)*48;return (i?'L':'M')+x+' '+y.toFixed(1)}).join('')}" style="stroke:var(--p);stroke-width:4;fill:none"/>
+  <path d="${Array.from({length:111},(_,i)=>{const x=20+i*3,y=85-Math.sin((x-20)/15*.6)*48;return (i?'L':'M')+x+' '+y.toFixed(1)}).join('')}" style="stroke:var(--c);stroke-width:4;fill:none"/>
+  <path d="M20 152H177M20 146V158M177 146V158" style="stroke:var(--fg);stroke-width:1.5"/>
+  <text x="98" y="168" class="lbl-a">1 skręt ≈ 10,5 pz ≈ 3,4 nm</text><text x="270" y="28" class="lbl">średnica ≈ 2 nm</text></svg>`;
+}
+function artFork(){
+  const yb=x=>105+(x-150)*55/200,yt=x=>85-(x-150)*55/200;
+  const frag=(a,b)=>`<path d="M${a} ${(yb(a)-12).toFixed(1)}L${b} ${(yb(b)-12).toFixed(1)}" style="stroke:var(--a);stroke-width:4" marker-end="url(#arA)"/>`;
+  return `<svg viewBox="0 0 360 200" role="img" aria-label="Widełki replikacyjne">
+  <defs><marker id="arA" viewBox="0 0 6 6" refX="4" refY="3" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L6 3L0 6Z" style="fill:var(--a)"/></marker></defs>
+  ${Array.from({length:9},(_,i)=>`<path d="M${18+i*15} 85V105" style="stroke:var(--line);stroke-width:4"/>`).join('')}
+  <path d="M10 85H150L350 30" style="stroke:var(--p);stroke-width:4;fill:none"/><path d="M10 105H150L350 160" style="stroke:var(--c);stroke-width:4;fill:none"/>
+  <path d="M340 ${(yt(340)+12).toFixed(1)}L168 ${(yt(168)+12).toFixed(1)}" style="stroke:var(--a);stroke-width:4" marker-end="url(#arA)"/>
+  ${frag(172,215)}${frag(234,280)}${frag(298,342)}
+  <circle cx="152" cy="95" r="13" style="fill:var(--accent)"/>
+  <text x="152" y="62" class="lbl-a">helikaza</text>
+  <text x="270" y="78" class="lbl">nić wiodąca (ciągła)</text><text x="250" y="190" class="lbl">nić opóźniona: fragmenty Okazakiego</text>
+  <text x="70" y="128" class="lbl">DNA rodzicielskie</text></svg>`;
+}
+function artDogma(){
+  const box=(x,t,c)=>`<rect x="${x}" y="58" width="92" height="50" rx="12" style="fill:var(--bg);stroke:var(--${c});stroke-width:2.5"/><text x="${x+46}" y="84" class="lbl-a" style="dominant-baseline:central;font-size:14px">${t}</text>`;
+  return `<svg viewBox="0 0 360 150" role="img" aria-label="Centralny dogmat biologii molekularnej">
+  <defs><marker id="arD" viewBox="0 0 6 6" refX="4" refY="3" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L6 3L0 6Z" style="fill:var(--fg)"/></marker></defs>
+  ${box(10,'DNA','c')}${box(134,'mRNA','u')}${box(258,'Białko','a')}
+  <path d="M104 83H130M228 83H254" style="stroke:var(--fg);stroke-width:2" marker-end="url(#arD)"/>
+  <path d="M34 56C30 18 74 18 70 52" style="stroke:var(--fg);stroke-width:2;fill:none" marker-end="url(#arD)"/>
+  <text x="52" y="16" class="lbl">replikacja</text><text x="118" y="132" class="lbl">transkrypcja</text><text x="242" y="132" class="lbl">translacja</text>
+  <text x="56" y="128" class="lbl">jądro</text><text x="304" y="40" class="lbl">rybosom</text></svg>`;
+}
+function artTranscription(){
+  return `<svg viewBox="0 0 360 180" role="img" aria-label="Transkrypcja: polimeraza RNA na matrycy DNA">
+  <path d="M10 92H120C140 92 150 70 180 70S220 92 240 92H350" style="stroke:var(--p);stroke-width:4;fill:none"/>
+  <path d="M10 112H120C140 112 150 134 180 134S220 112 240 112H350" style="stroke:var(--c);stroke-width:4;fill:none"/>
+  ${Array.from({length:7},(_,i)=>`<path d="M${20+i*15} 92V112M${250+i*15} 92V112" style="stroke:var(--line);stroke-width:4"/>`).join('')}
+  <ellipse cx="190" cy="104" rx="52" ry="38" style="fill:var(--accent);opacity:.3;stroke:var(--accent);stroke-width:2"/>
+  <path d="M168 126Q150 150 100 160Q60 168 30 158" style="stroke:var(--u);stroke-width:4;fill:none;stroke-dasharray:2 5;stroke-linecap:round"/>
+  <path d="M168 126Q150 150 100 160Q60 168 30 158" style="stroke:var(--u);stroke-width:2;fill:none"/>
+  <text x="190" y="40" class="lbl-a">polimeraza RNA</text><text x="300" y="80" class="lbl">nić kodująca</text><text x="300" y="132" class="lbl">nić matrycowa</text>
+  <text x="70" y="146" class="lbl" style="fill:var(--u)">mRNA 5′→3′</text></svg>`;
+}
+function artRibosome(){
+  const cods=['AUG','GCU','AAA','AUU'];
+  return `<svg viewBox="0 0 360 200" role="img" aria-label="Rybosom podczas translacji">
+  <ellipse cx="180" cy="92" rx="120" ry="52" style="fill:var(--line);opacity:.8"/>
+  <ellipse cx="180" cy="150" rx="104" ry="24" style="fill:var(--line)"/>
+  <path d="M10 138H350" style="stroke:var(--u);stroke-width:3"/>
+  ${cods.map((c,i)=>`<text x="${84+i*64}" y="160" class="mono" style="fill:var(--u)">${c}</text>`).join('')}
+  <rect x="134" y="70" width="36" height="56" rx="8" style="fill:var(--bg);stroke:var(--p);stroke-width:2"/><text x="152" y="116" class="mono" style="font-size:11px">UAC</text>
+  <rect x="190" y="70" width="36" height="56" rx="8" style="fill:var(--bg);stroke:var(--p);stroke-width:2"/><text x="208" y="116" class="mono" style="font-size:11px">CGA</text>
+  ${['a','c','g'].map((c,i)=>`<circle cx="${152-i*0+0}" cy="${58-i*20}" r="9" style="fill:var(--${c})"/>`).join('')}
+  <circle cx="208" cy="58" r="9" style="fill:var(--t)"/><path d="M161 58H199" style="stroke:var(--fg);stroke-width:2;stroke-dasharray:3 3"/>
+  <text x="300" y="56" class="lbl">tRNA</text><text x="300" y="72" class="lbl">z aminokwasem</text><text x="80" y="40" class="lbl">rosnący łańcuch</text>
+  <text x="180" y="194" class="lbl">mRNA czytane trójkami: kodon po kodonie</text></svg>`;
+}
+const CODE='FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG',NB='UCAG';
+const AA={F:['Phe','fenyloalanina'],L:['Leu','leucyna'],S:['Ser','seryna'],Y:['Tyr','tyrozyna'],'*':['STOP','kodon stop'],C:['Cys','cysteina'],W:['Trp','tryptofan'],P:['Pro','prolina'],H:['His','histydyna'],Q:['Gln','glutamina'],R:['Arg','arginina'],I:['Ile','izoleucyna'],M:['Met','metionina'],T:['Thr','treonina'],N:['Asn','asparagina'],K:['Lys','lizyna'],V:['Val','walina'],A:['Ala','alanina'],D:['Asp','kwas asparaginowy'],E:['Glu','kwas glutaminowy'],G:['Gly','glicyna']};
+const tr=c=>CODE[NB.indexOf(c[0])*16+NB.indexOf(c[1])*4+NB.indexOf(c[2])];
+function codonTable(){
+  let h='<div class="ctab"><table><thead><tr><th>1. \\ 2.</th>'+[...NB].map(b=>`<th>${b}</th>`).join('')+'</tr></thead><tbody>';
+  for(const a of NB){h+=`<tr><th>${a}</th>`;for(const b of NB){h+='<td>'+[...NB].map(c=>{const k=a+b+c,x=tr(k);return `<div class="cd ${k==='AUG'?'start':''} ${x==='*'?'stop':''}"><b>${k}</b> ${AA[x][0]}</div>`}).join('')+'</td>'}h+='</tr>'}
+  return h+'</tbody></table></div>';
+}
+function artAlign(){
+  return `<div class="align" role="img" aria-label="Przykład dopasowania sekwencji">
+  ${alignRows('ATGGTGCACCTG','ATGGTGCATCTG',8,true)}</div>`;
+}
+function alignRows(r,q,mm,show){
+  const cells=(s,cls)=>[...s].map((b,i)=>`<span class="ab ${i%3===0&&i?'cg':''} ${cls&&i===mm?cls:''}" style="color:var(--${b.toLowerCase()})">${b}</span>`).join('');
+  const m=[...r].map((b,i)=>`<span class="ab m ${i%3===0&&i?'cg':''}">${show?(r[i]===q[i]?'|':'×'):''}</span>`).join('');
+  return `<div class="strands-wrap"><div class="arow"><span class="lab">wzorzec</span>${cells(r)}</div><div class="arow"><span class="lab"></span>${m}</div><div class="arow"><span class="lab">próbka</span>${cells(q,'hit')}</div></div>`;
+}
+function artMutations(){
+  const row=(t,a,b,x,y,c)=>`<div class="arow" style="gap:10px;flex-wrap:wrap;width:auto"><b style="min-width:130px;color:var(--${c})">${t}</b><span class="mono-l">${a} → ${b}</span><span style="color:var(--muted)">${x} → ${y}</span></div>`;
+  return `<div class="result" style="border:0;padding:4px">${row('cicha','GAA','GAG','Glu','Glu','a')}${row('zmiany sensu','GAG','GTG','Glu','Val','g')}${row('nonsensowna','TGG','TGA','Trp','STOP','t')}</div>`;
+}
+function artEcoRI(){
+  const top='CCGAATTCGG',bot='GGCTTAAGCC';
+  const L=(s,y,c)=>[...s].map((b,i)=>`<text x="${60+i*24}" y="${y}" class="mono" style="font-size:16px;fill:var(--${'GAATTC'.includes(b)&&i>=2&&i<=7?b.toLowerCase():'muted'})">${b}</text>`).join('');
+  return `<svg viewBox="0 0 360 160" role="img" aria-label="Cięcie EcoRI">
+  <text x="30" y="60" class="lbl">5′</text><text x="330" y="60" class="lbl">3′</text><text x="30" y="104" class="lbl">3′</text><text x="330" y="104" class="lbl">5′</text>
+  ${L(top,60)}${L(bot,104)}
+  <path d="M120 40V72H144" style="stroke:var(--t);stroke-width:2.5;fill:none"/><path d="M144 72V84H216V116" style="stroke:var(--t);stroke-width:2.5;fill:none;stroke-dasharray:4 3"/>
+  <text x="180" y="146" class="lbl">EcoRI tnie G^AATTC: powstają lepkie końce AATT</text></svg>`;
+}
+function arc(cx,cy,r,a0,a1){const p=a=>[cx+r*Math.cos(rad(a)),cy+r*Math.sin(rad(a))].map(v=>v.toFixed(1)).join(' ');const large=((a1-a0+360)%360)>180?1:0;return `M${p(a0)} A${r} ${r} 0 ${large} 1 ${p(a1)}`}
+function plasmidSVG(closed){
+  return `<svg viewBox="0 0 360 220" role="img" aria-label="Plazmid z wstawionym genem">
+  <path d="${arc(180,112,72,-66,-114+360)}" style="stroke:var(--p);stroke-width:12;fill:none;stroke-linecap:butt"/>
+  <path d="${arc(180,112,72,30,80)}" style="stroke:var(--c);stroke-width:12;fill:none"/>
+  <path d="${arc(180,112,72,140,175)}" style="stroke:var(--a);stroke-width:12;fill:none"/>
+  <path id="ins" d="${arc(180,112,72,-114,-66)}" style="stroke:var(--g);stroke-width:14;fill:none;stroke-dasharray:62;stroke-dashoffset:${closed?0:62};transition:stroke-dashoffset 1.6s ease"/>
+  <text x="180" y="20" class="lbl-a" style="fill:var(--g)">gen insuliny</text>
+  <text x="280" y="160" class="lbl">ampR</text><text x="72" y="140" class="lbl">ori</text>
+  <text x="180" y="116" class="lbl-a">plazmid</text><text x="180" y="132" class="lbl">kolista cząsteczka DNA</text></svg>`;
+}
+function artCRISPR(){
+  const s='GACGTTCAGTCCGATTACAGTGG';
+  return `<svg viewBox="0 0 360 190" role="img" aria-label="CRISPR-Cas9 na celu DNA">
+  <ellipse cx="170" cy="100" rx="170" ry="54" style="fill:var(--accent);opacity:.16"/>
+  <rect x="${12+20*14.4}" y="86" width="${3*14.4}" height="26" rx="5" style="fill:var(--g);opacity:.3"/>
+  <rect x="12" y="86" width="${20*14.4}" height="26" rx="5" style="fill:var(--accent);opacity:.22"/>
+  ${[...s].map((b,i)=>`<text x="${19+i*14.4}" y="100" class="mono" style="dominant-baseline:central;fill:var(--${b.toLowerCase()})">${b}</text>`).join('')}
+  <path d="M${12+17*14.4} 76V124" style="stroke:var(--t);stroke-width:2.5;stroke-dasharray:4 3"/>
+  <path d="M12 72H${12+20*14.4}" style="stroke:var(--u);stroke-width:4"/>
+  <text x="150" y="60" class="lbl" style="fill:var(--u)">gRNA (20 nt) prowadzi Cas9</text>
+  <text x="${12+21.5*14.4}" y="136" class="lbl-a" style="fill:var(--g)">PAM</text>
+  <text x="${12+17*14.4}" y="150" class="lbl" style="fill:var(--t)">cięcie 3 pz przed PAM</text>
+  <text x="170" y="180" class="lbl">białko Cas9 (fioletowe tło) przecina obie nici</text></svg>`;
+}
+function cellSVG(all){
+  const on=k=>all?'org on':'org';
+  const er=[0,1,2].map(i=>`<path d="M${212+i*10} ${70+i*6}C${250+i*8} ${90+i*6} ${226+i*8} ${130} ${262+i*8} ${150+i*4}" style="stroke:var(--u);stroke-width:3.5;fill:none;stroke-linecap:round"/>`).join('');
+  const ribs=[[222,82],[246,104],[240,128],[264,146],[232,74],[256,92],[274,118],[100,170],[120,186],[86,150],[250,60],[205,190]];
+  const mito=(x,y,rot)=>`<g transform="translate(${x} ${y}) rotate(${rot})"><ellipse rx="30" ry="14" style="fill:var(--bg);stroke:var(--t);stroke-width:3"/><path d="M-20 0l6-8l6 16l6-16l6 16l6-16l6 8" style="stroke:var(--t);stroke-width:2;fill:none"/></g>`;
+  return `<svg viewBox="0 0 340 250" role="img" aria-label="Komórka eukariotyczna">
+  <g class="${on()}" data-o="mem"><ellipse cx="170" cy="125" rx="160" ry="112" style="fill:var(--bg);stroke:var(--c);stroke-width:5"/><ellipse cx="170" cy="125" rx="152" ry="104" style="fill:none;stroke:var(--c);stroke-width:1.5;opacity:.5"/></g>
+  <g class="${on()}" data-o="nuc"><circle cx="160" cy="118" r="50" style="fill:var(--panel);stroke:var(--p);stroke-width:3"/><circle cx="160" cy="118" r="44" style="fill:none;stroke:var(--p);stroke-width:1.2;stroke-dasharray:6 4"/><circle cx="172" cy="106" r="11" style="fill:var(--p);opacity:.55"/>
+    <path d="M130 120c6-10 12 10 18 0s12 10 18 0s12 10 18 0M136 136c6-8 12 8 18 0s12 8 18 0" style="stroke:var(--g);stroke-width:2;fill:none"/></g>
+  <g class="${on()}" data-o="er">${er}</g>
+  <g class="${on()}" data-o="rib">${ribs.map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4" style="fill:var(--g)"/>`).join('')}</g>
+  <g class="${on()}" data-o="mit">${mito(72,96,-25)}${mito(262,196,15)}${mito(90,196,30)}</g>
+  </svg>`;
+}
+
+/* ---------- STAGES ---------- */
+const STAGES=[
+{field:'Biochemia',title:'Alfabet życia: nukleotyd',short:'Nukleotyd',
+ slides:[
+  {t:'DNA, czyli kwas deoksyrybonukleinowy, przechowuje instrukcję budowy każdego organizmu. W jednej komórce człowieka DNA ma łącznie około dwóch metrów długości, a mieści się w jądrze o średnicy kilku mikrometrów.',art:()=>artHelix('ATGCGTACCGATTGCATG')},
+  {t:'Ta instrukcja jest zapisana alfabetem czterech liter. Każda litera to nukleotyd, zbudowany z trzech części: reszty fosforanowej, cukru deoksyrybozy i zasady azotowej. Fosforan łączy się z węglem 5′ cukru, a zasada z węglem 1′.',art:()=>nuc('G')},
+  {t:'Zasady to adenina (A), guanina (G), tymina (T) i cytozyna (C). Adenina i guanina to puryny, mają dwa pierścienie. Tymina i cytozyna to pirymidyny z jednym pierścieniem.',art:artBases}
+ ],
+ intro:'Zbuduj dwa nukleotydy DNA. Wybieraj elementy w kolejności: fosforan, cukier, zasada. Uważaj, w puli są też części należące do RNA!',
+ task:taskNucleotide},
+{field:'Biologia molekularna',title:'Podwójna helisa i komplementarność',short:'Podwójna helisa',
+ slides:[
+  {t:'W 1953 roku James Watson i Francis Crick, korzystając ze zdjęć dyfrakcyjnych Rosalind Franklin, opisali DNA jako podwójną helisę. Dwie nici biegną antyrównolegle: jedna od końca 5′ do 3′, druga odwrotnie.',art:()=>artHelix('GATTACAGCTAGCCTA')},
+  {t:'Zasady łączą się w pary komplementarne: A z T dwoma wiązaniami wodorowymi, G z C trzema. Znając jedną nić, można więc odtworzyć drugą.',art:artPairs},
+  {t:'Jeden pełny skręt helisy to około 10,5 pary zasad i 3,4 nanometra. Pary G–C wiążą się mocniej, więc DNA bogate w G i C rozdziela się dopiero w wyższej temperaturze.',art:artTurn}
+ ],
+ intro:'Dobuduj nić komplementarną. Dla każdej zasady górnej nici wybierz jej partnera.',
+ task:taskPairing},
+{field:'Genetyka',title:'Replikacja: kopiowanie DNA',short:'Replikacja',
+ slides:[
+  {t:'Zanim komórka się podzieli, musi skopiować całe DNA. Replikacja jest semikonserwatywna: każda nowa cząsteczka ma jedną nić starą i jedną nową.',art:artFork},
+  {t:'Polimeraza DNA dobudowuje nić tylko w kierunku 5′→3′. Dlatego nić wiodąca rośnie w sposób ciągły, a nić opóźniona powstaje z krótkich fragmentów Okazakiego.',art:artFork}
+ ],
+ intro:'Ułóż enzymy replikacji we właściwej kolejności. Dotykaj kart od pierwszego do ostatniego kroku.',
+ task:taskReplication},
+{field:'Biologia molekularna',title:'Transkrypcja: z DNA na mRNA',short:'Transkrypcja',
+ slides:[
+  {t:'Centralny dogmat biologii molekularnej: DNA → RNA → białko. Najpierw informacja z DNA jest przepisywana na RNA. To transkrypcja, która u człowieka zachodzi w jądrze komórkowym.',art:artDogma},
+  {t:'Polimeraza RNA czyta nić matrycową od 3′ do 5′ i buduje mRNA od 5′ do 3′. W RNA zamiast tyminy występuje uracyl (U), a cukrem jest ryboza.',art:artTranscription}
+ ],
+ intro:'Przepisz nić matrycową DNA na mRNA. Uwaga: w RNA nie ma tyminy!',
+ task:taskTranscription},
+{field:'Biochemia',title:'Translacja: z mRNA na białko',short:'Translacja',
+ slides:[
+  {t:'Rybosom odczytuje mRNA trójkami nukleotydów, czyli kodonami. Kodonów jest 64, a aminokwasów tylko 20, więc wiele aminokwasów ma po kilka kodonów. Mówimy, że kod genetyczny jest zdegenerowany.',art:codonTable},
+  {t:'Translacja zaczyna się od kodonu start AUG, który koduje metioninę, i kończy na kodonie stop: UAA, UAG lub UGA. Cząsteczki tRNA przynoszą aminokwasy, a rybosom łączy je wiązaniami peptydowymi.',art:artRibosome}
+ ],
+ intro:'Bądź rybosomem! Odczytaj każdy kodon w tabeli kodu genetycznego i wybierz właściwy aminokwas.',
+ task:taskTranslation},
+{field:'Bioinformatyka',title:'Bioinformatyka: szukamy mutacji',short:'Bioinformatyka',
+ slides:[
+  {t:'Bioinformatyka to analiza danych biologicznych za pomocą komputera. Sekwencje porównuje się przez dopasowanie, po angielsku alignment: ustawia się je obok siebie i szuka różnic. Tak działa na przykład program BLAST.',art:artAlign},
+  {t:'Zmiana jednej zasady to mutacja punktowa. Może być cicha, gdy aminokwas się nie zmienia, zmiany sensu, gdy powstaje inny aminokwas, albo nonsensowna, gdy pojawia się kodon stop.',art:artMutations}
+ ],
+ intro:'Masz fragment genu HBB, kodującego beta-globinę. Porównaj sekwencję pacjenta ze wzorcem i znajdź mutację.',
+ task:taskBioinfo},
+{field:'Biotechnologia',title:'Biotechnologia: nożyczki genów',short:'Biotechnologia',
+ slides:[
+  {t:'Enzymy restrykcyjne to molekularne nożyczki bakterii. EcoRI rozpoznaje sekwencję GAATTC i tnie między G a A. Zostają lepkie końce, które łatwo łączą się z pasującym fragmentem.',art:artEcoRI},
+  {t:'Wycięty gen można wkleić do plazmidu, czyli małego, kolistego DNA bakterii, i połączyć ligazą. Tak od 1982 roku bakterie produkują ludzką insulinę dla chorych na cukrzycę.',art:()=>plasmidSVG(true)},
+  {t:'CRISPR-Cas9 to precyzyjny edytor genów, nagrodzony Noblem w 2020 roku. Prowadząca cząsteczka gRNA kieruje białko Cas9 do celu o długości 20 nukleotydów, położonego tuż przed sekwencją PAM: NGG. Cas9 przecina DNA 3 pary zasad przed PAM.',art:artCRISPR}
+ ],
+ intro:'Znajdź w sekwencji miejsce cięcia enzymu EcoRI, a potem wklej gen do plazmidu.',
+ task:taskBiotech},
+{field:'Biologia komórki',title:'Od komórki do organizmu',short:'Organizm',
+ slides:[
+  {t:'DNA i białka potrzebują domu. Komórka to najmniejsza jednostka życia: ma błonę, cytoplazmę, materiał genetyczny oraz maszyny do wytwarzania białek i energii.',art:()=>cellSVG(true)}
+ ],
+ intro:'Złóż żywą komórkę. Do każdej funkcji dopasuj właściwy element.',
+ task:taskCell}
+];
+
+/* ---------- tasks ---------- */
+function taskNucleotide(el){
+  const N={P:'Fosforan',dR:'Deoksyryboza',R:'Ryboza',A:'Adenina',T:'Tymina',G:'Guanina',C:'Cytozyna',U:'Uracyl'};
+  const R=[{b:'G',name:'dGMP',full:'deoksyguanozyno-5′-monofosforan'},{b:'T',name:'dTMP',full:'deoksytymidyno-5′-monofosforan'}];
+  let r=0,slot=0;
+  el.innerHTML=head('Zadanie','<span id="q"></span>','Kolejność: fosforan → cukier → zasada azotowa.')+
+    `<figure class="art" id="build"></figure><div class="tray" id="tray">${Object.keys(N).map(k=>`<button class="part" data-k="${k}">${partIcon(k)}<span>${N[k]}</span></button>`).join('')}</div><p class="fb" aria-live="polite"></p><div id="after" class="nav"></div>`;
+  const draw=()=>{$('#q',el).textContent=`Nukleotyd ${r+1} z 2: zbuduj nukleotyd z zasadą ${N[R[r].b].toLowerCase()} (${R[r].b})`;$('#build',el).innerHTML=nuc(R[r].b,slot)};
+  draw();
+  $('#tray',el).addEventListener('click',e=>{
+    const btn=e.target.closest('.part');if(!btn||slot>2)return;
+    const k=btn.dataset.k,tgt=R[r].b,isBase=k.length===1&&'ATGCU'.includes(k);let msg=null;
+    if(slot===0){if(k!=='P')msg=(k==='dR'||k==='R')?'Cukier przyłączy się do fosforanu przez węgiel 5′. Zacznij od fosforanu.':'Zasada nie ma jeszcze do czego się przyłączyć. Zacznij od fosforanu.'}
+    else if(slot===1){if(k==='R')msg='Ryboza ma grupę OH przy węglu 2′ i buduje RNA. DNA potrzebuje deoksyrybozy, czyli cukru bez jednego atomu tlenu.';else if(k!=='dR')msg=k==='P'?'Fosforan już jest. Teraz cukier.':'Zasada wiąże się z węglem 1′ cukru. Najpierw dodaj cukier.'}
+    else if(k!==tgt){msg=k==='U'?'Uracyl występuje tylko w RNA. W DNA jego miejsce zajmuje tymina.':isBase?`To ${N[k].toLowerCase()}. Szukamy zasady: ${N[tgt].toLowerCase()} (${tgt}).`:'Szkielet cukrowo-fosforanowy jest gotowy. Teraz zasada azotowa.'}
+    if(msg){api.bad(msg,el);return}
+    slot++;api.good();draw();fb(el,'');
+    if(slot===3){
+      const x=R[r],t=`Gotowe! To ${x.name}, czyli ${x.full}.`;fb(el,t,'ok');Guide.say(t,`Gotowe! To ${x.full}.`);
+      if(r===0)addNext($('#after',el),()=>{r=1;slot=0;draw();fb(el,'');Guide.say('Teraz nukleotyd z tyminą. Uważaj: w puli jest też uracyl.')},'Następny nukleotyd');
+      else stageDone(0,'Znasz już budowę nukleotydu. Szkielet nici tworzą na przemian fosforan i deoksyryboza, a kolejność zasad azotowych niesie informację genetyczną.');
+    }
+  });
+}
+
+function pairTask(el,o){
+  let i=0;const n=o.top.length;
+  const wrap=document.createElement('div');wrap.style.cssText='display:flex;flex-direction:column;gap:14px';
+  const cols=[...o.top].map((b,k)=>`<div class="col${o.codon&&k%3===0&&k?' cg':''}" data-k="${k}"><span class="cell b${b}">${b}</span><span class="bond"></span><span class="cell slot">?</span></div>`).join('');
+  wrap.innerHTML=`<div class="strands-wrap"><div class="strands"><div class="ends"><b>${o.ends[0]}</b><i></i><b>${o.ends[2]}</b></div>${cols}<div class="ends"><b>${o.ends[1]}</b><i></i><b>${o.ends[3]}</b></div></div></div>
+  <div class="keys">${o.buttons.map(b=>`<button class="key b${b}" data-b="${b}" aria-label="Zasada ${b}">${b}</button>`).join('')}</div><p class="fb" aria-live="polite"></p>`;
+  el.appendChild(wrap);
+  const sw=$('.strands-wrap',wrap);
+  const mark=()=>{$$('.col',wrap).forEach((c,k)=>c.classList.toggle('cur',k===i));const c=$(`.col[data-k="${i}"]`,wrap);if(c)sw.scrollLeft=Math.max(0,c.offsetLeft-sw.clientWidth/2)};
+  mark();
+  $('.keys',wrap).addEventListener('click',e=>{
+    const k=e.target.closest('.key');if(!k||i>=n)return;const b=k.dataset.b,t=o.top[i],want=o.map[t];
+    if(b===want){
+      const col=$(`.col[data-k="${i}"]`,wrap),s=$('.slot',col);s.textContent=b;s.className='cell slot b'+b+' pop';
+      $('.bond',col).innerHTML='<i></i>'.repeat(o.bonds?o.bonds(t):1);
+      api.good(5);fb(wrap,'');i++;mark();if(i===n){$$('.key',wrap).forEach(x=>x.disabled=true);o.onDone(wrap)}
+    }else api.bad(o.wrong(b,t,want),wrap);
+  });
+}
+
+function taskPairing(el){
+  el.innerHTML=head('Zadanie','Uzupełnij nić komplementarną','Dotknij zasady, która tworzy parę z zasadą zaznaczoną na górnej nici. Zwróć uwagę na końce 5′ i 3′.');
+  pairTask(el,{top:'ATGCGTAC',ends:['5′','3′','3′','5′'],map:{A:'T',T:'A',G:'C',C:'G'},buttons:['A','T','G','C'],bonds:b=>'AT'.includes(b)?2:3,
+    wrong:(b,t)=>`${b} nie tworzy pary z ${t}. Puryna łączy się zawsze z pirymidyną: A z T, a G z C.`,
+    onDone:()=>{Guide.say('Świetnie, obie nici są gotowe!');
+      quiz(el,{q:'Ile wiązań wodorowych łączy te 8 par zasad?',opts:['16','20','24'],ok:1,
+        why:'Tak. 4 pary A–T po 2 wiązania i 4 pary G–C po 3 wiązania: 8 + 12 = 20.',
+        wrong:{0:'To byłoby po 2 wiązania na każdą parę. Pary G–C mają ich 3.',2:'To byłoby po 3 wiązania na każdą parę. Pary A–T mają tylko 2.'}},
+        ()=>stageDone(1,'Reguła komplementarności pozwala odtworzyć jedną nić z drugiej. Opierają się na niej replikacja, sekwencjonowanie DNA i reakcja PCR.'))}});
+}
+
+function taskReplication(el){
+  const S=[
+    {n:'Helikaza',d:'rozrywa wiązania wodorowe i rozplata helisę, tworząc widełki replikacyjne'},
+    {n:'Prymaza',d:'dokłada krótki starter RNA, od którego może zacząć polimeraza'},
+    {n:'Polimeraza DNA',d:'dobudowuje nukleotydy komplementarne do matrycy, w kierunku 5′→3′'},
+    {n:'Ligaza DNA',d:'skleja fragmenty Okazakiego w ciągłą nić'}];
+  const early=['','Prymaza potrzebuje pojedynczej nici, a helisa jest jeszcze zamknięta. Co ją rozplecie?','Polimeraza DNA nie zaczyna od zera. Potrzebuje rozplecionej nici i startera.','Ligaza skleja gotowe fragmenty, a jeszcze żadnych nie ma.'];
+  let nx=0;
+  el.innerHTML=head('Zadanie','Ułóż kolejność pracy enzymów','Dotknij enzymu, który działa jako następny.')+
+    `<ol class="timeline">${S.map(()=>'<li><div></div></li>').join('')}</ol><div class="cards">${[2,0,3,1].map(k=>`<button class="card" data-k="${k}">${S[k].n}</button>`).join('')}</div><p class="fb" aria-live="polite"></p>`;
+  $('.cards',el).addEventListener('click',e=>{
+    const c=e.target.closest('.card');if(!c||c.disabled)return;const k=+c.dataset.k;
+    if(k===nx){const li=$$('.timeline li',el)[nx];li.classList.add('filled');li.firstElementChild.innerHTML=`<b>${S[k].n}</b><span>${S[k].d}</span>`;c.disabled=true;api.good();fb(el,'');nx++;
+      if(nx===4){Guide.say('Kolejność się zgadza!');quiz(el,{q:'W którym kierunku polimeraza DNA wydłuża nową nić?',opts:['5′ → 3′','3′ → 5′','W obu kierunkach'],ok:0,
+        why:'Tak! Polimeraza dołącza nukleotydy tylko do końca 3′. Dlatego nić opóźniona powstaje z fragmentów Okazakiego, które ligaza potem skleja.',
+        wrong:{1:'Odwrotnie. Nowy nukleotyd zawsze dołącza do wolnej grupy OH na końcu 3′.',2:'Gdyby tak było, nie byłoby fragmentów Okazakiego. Polimeraza działa tylko w jedną stronę.'}},
+        ()=>stageDone(2,'Replikacja kopiuje około 3 miliardy par zasad przy każdym podziale komórki, a polimeraza poprawia własne błędy. Myli się średnio raz na miliard nukleotydów.'))}}
+    else api.bad(early[k]||'Ten enzym już pracuje. Wybierz następny.',el);
+  });
+}
+
+function taskTranscription(el){
+  el.innerHTML=head('Zadanie','Zbuduj mRNA na matrycy DNA','Góra: nić matrycowa DNA (3′→5′). Dół: mRNA, które budujesz (5′→3′). Odstępy dzielą sekwencję na kodony.');
+  pairTask(el,{top:'TACAAACCGATT',codon:true,ends:['3′','5′','5′','3′'],map:{T:'A',A:'U',G:'C',C:'G'},buttons:['A','U','G','C','T'],
+    wrong:(b,t)=>b==='T'?'W RNA nie ma tyminy. Naprzeciw adeniny polimeraza RNA wstawia uracyl, czyli U.':`${b} nie pasuje do ${t} na matrycy.`+(t==='A'?' Pamiętaj: w RNA adenina paruje się z uracylem.':''),
+    onDone:()=>{
+      const r=document.createElement('div');r.className='result';
+      r.innerHTML=`<p class="eyebrow">Gotowe mRNA</p><p class="mono-l" style="color:var(--u)">5′- AUG UUU GGC UAA -3′</p><p>Start (metionina) · fenyloalanina · glicyna · stop</p><div class="nav"></div>`;el.appendChild(r);
+      Guide.say('Doskonale! To mRNA opuszcza jądro przez pory jądrowe i trafia do rybosomu. Zaczyna się od kodonu start AUG i kończy kodonem stop UAA.');
+      addNext($('.nav',r),()=>stageDone(3,'Transkrypcja przepisuje tylko potrzebne geny, a nie cały genom. Dzięki temu komórka mięśnia i komórka nerwowa mają to samo DNA, lecz wytwarzają inne białka.'));
+    }});
+}
+
+function taskTranslation(el){
+  const cod=['AUG','GCU','AAA','AUU','UAA'];
+  const opt={AUG:['M','L','V','*'],GCU:['G','A','S','P'],AAA:['N','F','K','Q'],AUU:['L','M','F','I'],UAA:['Y','*','Q','K']};
+  const beadCol={M:'a',A:'c',K:'g',I:'t'};
+  let i=0;
+  el.innerHTML=head('Zadanie','Przetłumacz mRNA na białko','Znajdź kodon w tabeli: wiersz to pierwsza litera, kolumna druga, a w komórce szukasz trzeciej.')+
+    `<div class="mrna">${cod.map((c,k)=>`<span class="codon" data-k="${k}">${c}</span>`).join('')}</div>
+    <div class="tr-grid"><div class="tr-main"><p class="cur-codon">Kodon: <b id="cc"></b></p><div class="opts" id="aao"></div><p class="fb" aria-live="polite"></p><p class="eyebrow">Łańcuch polipeptydowy</p><div class="chain" id="chain"></div></div>
+    <details class="ct" open><summary>Tabela kodu genetycznego (mRNA)</summary>${codonTable()}</details></div><div id="after" style="display:flex;flex-direction:column;gap:12px"></div>`;
+  const show=()=>{const c=cod[i];$('#cc',el).textContent=c;$$('.codon',el).forEach((x,k)=>{x.classList.toggle('cur',k===i);x.classList.toggle('read',k<i)});
+    $('#aao',el).innerHTML=opt[c].map(a=>`<button class="opt" data-a="${a}">${AA[a][0]} · ${AA[a][1]}</button>`).join('')};
+  show();
+  $('#aao',el).addEventListener('click',e=>{
+    const b=e.target.closest('.opt');if(!b||b.disabled||i>=cod.length)return;const a=b.dataset.a,c=cod[i],want=tr(c);
+    if(a===want){
+      api.good();fb(el,'');const ch=$('#chain',el);
+      if(a!=='*'){ch.insertAdjacentHTML('beforeend',`${i?'<span class="link"></span>':''}<span class="bead" style="background:var(--${beadCol[a]})" title="${AA[a][1]}">${a}</span>`)}
+      i++;
+      if(i<cod.length)show();else finish();
+    }else{b.disabled=true;b.classList.add('wrong');api.bad(`${c} nie koduje: ${AA[a][1]}. Wiersz ${c[0]}, kolumna ${c[1]}, trzecia litera ${c[2]}.`,el)}
+  });
+  function finish(){
+    $$('.codon',el).forEach(x=>{x.classList.remove('cur');x.classList.add('read')});$('#aao',el).innerHTML='';$('#cc',el).textContent='—';
+    fb(el,'Kodon stop: rybosom uwalnia łańcuch. Powstał peptyd M-A-K-I.','ok');
+    Guide.say('Rybosom trafił na kodon stop i uwolnił łańcuch. Powstał peptyd M A K I: metionina, alanina, lizyna, izoleucyna. Prawdziwe białka mają setki aminokwasów. Zobacz, jak taki łańcuch się fałduje.');
+    const a=$('#after',el);
+    a.innerHTML=`<figure class="art" style="position:relative"><canvas id="fold" style="height:220px" role="img" aria-label="Fałdowanie białka"></canvas><p id="flab" class="eyebrow" style="position:absolute;left:16px;top:12px"></p></figure><p class="hint" id="fdesc"></p><div class="nav"></div>`;
+    fold($('#fold',el),$('#flab',el),$('#fdesc',el));
+    addNext($('.nav',a),()=>stageDone(4,'Kształt białka zależy od kolejności aminokwasów. W 2024 roku Nagrodę Nobla z chemii otrzymali twórcy AlphaFold i David Baker za przewidywanie i projektowanie struktur białek komputerem.'),'Zakończ etap');
+  }
+}
+function fold(cv,lab,desc){
+  const ctx=cv.getContext('2d'),N=40;let w,h,raf=0;const t0=performance.now();
+  const cols=['--a','--c','--g','--t','--p','--u'].map(cssv);
+  function size(){const d=Math.min(2,devicePixelRatio||1);w=cv.clientWidth;h=cv.clientHeight;cv.width=w*d;cv.height=h*d;ctx.setTransform(d,0,0,d,0,0)}
+  size();const ro=new ResizeObserver(size);ro.observe(cv);
+  const P=[
+    i=>[w*.06+w*.88*i/(N-1),h*.55],
+    i=>[w*.06+w*.88*i/(N-1),h*.55+(i<N/2?Math.sin(i*1.9)*h*.2:(i%2?1:-1)*h*.08)],
+    i=>{const R=Math.min(w,h)*.42,f=.25+.75*i/N,a=i*.72;return [w/2+Math.cos(a)*R*f,h*.55+Math.sin(a)*R*f*.85]}];
+  const L=[['Struktura I-rzędowa','Łańcuch aminokwasów połączonych wiązaniami peptydowymi.'],['Struktura II-rzędowa','Fragmenty zwijają się w helisy alfa i układają w harmonijki beta.'],['Struktura III-rzędowa','Całe białko składa się w trójwymiarowy kształt, który decyduje o jego funkcji.']];
+  const ease=x=>x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;
+  let last=-1;
+  function draw(now){
+    const s=RM?99:(now-t0)/1000;let a,b,k,stage;
+    if(s<1.4){a=0;b=0;k=0;stage=0}else if(s<3.4){a=0;b=1;k=ease((s-1.4)/2);stage=1}else if(s<4.8){a=1;b=1;k=0;stage=1}else if(s<7){a=1;b=2;k=ease((s-4.8)/2.2);stage=2}else{a=2;b=2;k=0;stage=2}
+    if(stage!==last){last=stage;lab.textContent=L[stage][0];desc.textContent=L[stage][1]}
+    ctx.clearRect(0,0,w,h);const pts=[];
+    for(let i=0;i<N;i++){const p=P[a](i),q=P[b](i);pts.push([p[0]+(q[0]-p[0])*k,p[1]+(q[1]-p[1])*k])}
+    ctx.strokeStyle=cssv('--muted');ctx.lineWidth=2;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke();
+    pts.forEach((p,i)=>{ctx.fillStyle=cols[i%cols.length];ctx.beginPath();ctx.arc(p[0],p[1],6.5,0,7);ctx.fill()});
+    if(s<7.2)raf=requestAnimationFrame(draw);
+  }
+  raf=requestAnimationFrame(draw);
+  anims.push(()=>{cancelAnimationFrame(raf);ro.disconnect()});
+}
+
+function taskBioinfo(el){
+  const ref='GTGCACCTGACTCCTGAGGAG',pat='GTGCACCTGACTCCTGTGGAG',MM=16;
+  const num=[...ref].map((_,i)=>`<span class="ab ${i%3===0&&i?'cg':''}">${i%3===1?(i-1)/3+1:''}</span>`).join('');
+  const rrow=[...ref].map((b,i)=>`<span class="ab ${i%3===0&&i?'cg':''}" data-r="${i}" style="color:var(--${b.toLowerCase()})">${b}</span>`).join('');
+  const mrow=[...ref].map((b,i)=>`<span class="ab m ${i%3===0&&i?'cg':''}" data-m="${i}"></span>`).join('');
+  const prow=[...pat].map((b,i)=>`<button class="ab ${i%3===0&&i?'cg':''}" data-p="${i}" style="color:var(--${b.toLowerCase()})" aria-label="Pozycja ${i+1}: ${b}">${b}</button>`).join('');
+  el.innerHTML=head('Zadanie 1 z 3','Znajdź mutację punktową w genie HBB','Porównaj sekwencje kodon po kodonie i dotknij w próbce pacjenta zasady, która różni się od wzorca. Liczby nad sekwencją to numery kodonów.')+
+    `<div class="align"><div class="strands-wrap"><div class="arow num"><span class="lab">kodon</span>${num}</div><div class="arow"><span class="lab">wzorzec</span>${rrow}</div><div class="arow"><span class="lab"></span>${mrow}</div><div class="arow"><span class="lab">pacjent</span>${prow}</div></div></div><p class="fb" aria-live="polite"></p>`;
+  let found=false;
+  $('.align',el).addEventListener('click',e=>{
+    const b=e.target.closest('button.ab');if(!b||found)return;const j=+b.dataset.p;
+    if(j===MM){found=true;api.good(15);b.classList.add('hit');$(`[data-r="${MM}"]`,el).classList.add('hitref');
+      $$('[data-m]',el).forEach(m=>{const i=+m.dataset.m;m.textContent=ref[i]===pat[i]?'|':'×'});
+      fb(el,'Znaleziona! Kodon 6: GAG we wzorcu, GTG u pacjenta.','ok');
+      quiz(el,{q:'GAG koduje kwas glutaminowy (Glu), a GTG walinę (Val). Jaki to typ mutacji?',opts:['cicha','zmiany sensu (missense)','nonsensowna','przesunięcie ramki odczytu'],ok:1,
+        why:'Tak. To słynna mutacja w genie beta-globiny. Walina zamiast kwasu glutaminowego sprawia, że hemoglobina S zlepia się w długie włókna, a czerwone krwinki przyjmują kształt sierpa. Tak powstaje anemia sierpowata.',
+        wrong:{0:'Cicha mutacja nie zmienia aminokwasu, a tu Glu zmienia się w Val.',2:'Mutacja nonsensowna tworzy kodon stop. GTG nie jest kodonem stop.',3:'Przesunięcie ramki wymaga wstawienia lub usunięcia zasad. Tu jedna zasada została zamieniona na inną.'},
+        after:box=>box.insertAdjacentHTML('beforeend',`<figure class="art"><svg viewBox="0 0 360 130" role="img" aria-label="Prawidłowa i sierpowata krwinka"><circle cx="100" cy="62" r="42" style="fill:var(--t)"/><circle cx="100" cy="62" r="20" style="fill:var(--bg);opacity:.35"/><path d="M220 30C300 20 320 90 290 104C300 70 260 50 214 62C200 48 204 34 220 30Z" style="fill:var(--t)"/><text x="100" y="122" class="lbl">prawidłowa krwinka</text><text x="262" y="122" class="lbl">krwinka sierpowata (HbS)</text></svg></figure>`)},
+        ()=>{
+          const g=document.createElement('div');el.appendChild(g);
+          g.insertAdjacentHTML('beforeend',head('Zadanie 3 z 3','Policz zawartość GC','Wzór: (liczba G + liczba C) ÷ liczba wszystkich zasad × 100%.')+`<div class="strands-wrap"><div class="arow">${[...'GCATGCGCTA'].map(b=>`<span class="ab" style="color:var(--${b.toLowerCase()});font-size:1.2rem">${b}</span>`).join('')}</div></div>`);
+          quiz(g,{q:'Jaka jest zawartość GC w sekwencji GCATGCGCTA?',opts:['40%','50%','60%','70%'],ok:2,
+            why:'Tak. G i C występują 6 razy na 10 zasad, czyli 60%. Bioinformatycy liczą GC, bo wpływa ono na stabilność DNA i projektowanie starterów do PCR.',
+            wrong:{0:'Policz jeszcze raz: G pojawia się 3 razy i C też 3 razy.',1:'Prawie. Policz osobno G i osobno C.',3:'To za dużo. A i T zajmują 4 pozycje z 10.'}},
+            ()=>stageDone(5,'Właśnie wykonano prawdziwą analizę bioinformatyczną: dopasowanie sekwencji, identyfikację mutacji, ocenę jej skutku i obliczenie zawartości GC.'));
+        });
+    }else api.bad('Ta pozycja jest taka sama w obu sekwencjach. Porównuj kodon po kodonie.',el);
+  });
+}
+
+function taskBiotech(el){
+  const seq='TTACGAATTCGCTAGG',S=4,cmp={A:'T',T:'A',G:'C',C:'G'};
+  el.innerHTML=head('Zadanie 1 z 3','Znajdź miejsce cięcia EcoRI','Szukaj sekwencji GAATTC na górnej nici i dotknij jej pierwszej litery.')+
+    `<div class="align"><div class="strands-wrap"><div class="arow"><span class="lab">5′ nić górna</span>${[...seq].map((b,i)=>`<button class="ab" data-i="${i}" style="color:var(--${b.toLowerCase()})">${b}</button>`).join('')}<span class="lab" style="padding-left:6px">3′</span></div>
+    <div class="arow"><span class="lab">3′ nić dolna</span>${[...seq].map((b,i)=>`<span class="ab" data-d="${i}" style="color:var(--${cmp[b].toLowerCase()})">${cmp[b]}</span>`).join('')}<span class="lab" style="padding-left:6px">5′</span></div></div></div><p class="fb" aria-live="polite"></p>`;
+  let done=false;
+  $('.align',el).addEventListener('click',e=>{
+    const b=e.target.closest('button.ab');if(!b||done)return;const j=+b.dataset.i;
+    if(j===S){done=true;api.good(15);
+      for(let k=S;k<S+6;k++){$(`[data-i="${k}"]`,el).classList.add('hit');$(`[data-d="${k}"]`,el).classList.add('hit')}
+      $(`[data-i="${S}"]`,el).style.marginRight='14px';$(`[data-d="${S+4}"]`,el).style.marginRight='14px';
+      fb(el,'Cięcie! Górna nić: G | AATTC, dolna: CTTAA | G. Powstały lepkie końce AATT.','ok');
+      Guide.say('Brawo! EcoRI przecina obie nici w przesunięciu. Zostają jednoniciowe, lepkie końce AATT, które przyciągają pasujący fragment DNA. Teraz wklej gen insuliny do plazmidu.');
+      const p=document.createElement('div');p.style.cssText='display:flex;flex-direction:column;gap:12px';
+      p.innerHTML=head('Zadanie 2 z 3','Wklej gen do plazmidu','Plazmid przecięto tym samym enzymem, więc ma pasujące końce. Ligaza połączy szkielety cukrowo-fosforanowe.')+`<figure class="art" id="pl">${plasmidSVG(false)}</figure><div class="nav"><button class="btn" id="lig">Dodaj ligazę i wklej gen</button></div>`;
+      el.appendChild(p);p.scrollIntoView({behavior:RM?'auto':'smooth',block:'nearest'});
+      $('#lig',p).addEventListener('click',ev=>{ev.target.remove();requestAnimationFrame(()=>{$('#ins',p).style.strokeDashoffset='0'});api.good();
+        Guide.say('Gotowe! Plazmid rekombinowany wraca do bakterii. Gen ampR daje oporność na ampicylinę, więc na pożywce z antybiotykiem przeżyją tylko bakterie z plazmidem.');
+        setTimeout(()=>quiz(el,{q:'Jaką sekwencję PAM musi znaleźć białko Cas9 z bakterii Streptococcus pyogenes?',opts:['NGG','GAATTC','AUG','TATA'],ok:0,
+          why:'Tak. N oznacza dowolny nukleotyd, a po nim muszą być dwie guaniny. Bez PAM Cas9 nie przetnie DNA, nawet gdy gRNA pasuje.',
+          wrong:{1:'GAATTC rozpoznaje enzym restrykcyjny EcoRI, nie Cas9.',2:'AUG to kodon start w mRNA.',3:'TATA to sekwencja w promotorze, gdzie zaczyna się transkrypcja.'}},
+          ()=>quiz(el,{q:'Ile par zasad przed sekwencją PAM Cas9 przecina DNA?',opts:['1','3','10','20'],ok:1,
+            why:'Tak, 3 pary zasad przed PAM. Komórka naprawia przerwę, a naukowcy wykorzystują tę naprawę, by wyłączyć gen albo wstawić poprawioną sekwencję.',
+            wrong:{0:'Trochę dalej od PAM.',2:'Za daleko. Cięcie wypada bardzo blisko PAM.',3:'20 nukleotydów to długość celu rozpoznawanego przez gRNA, a nie miejsce cięcia.'}},
+            ()=>stageDone(6,'Biotechnologia wykorzystuje naturalne narzędzia bakterii: enzymy restrykcyjne, plazmidy i CRISPR. W 2023 roku zatwierdzono pierwszą terapię CRISPR, właśnie na anemię sierpowatą.'))),RM?0:1700);
+      });
+    }else if(j>S&&j<S+6)api.bad('Dobre miejsce, ale dotknij pierwszej litery sekwencji GAATTC.',el);
+    else api.bad('Tu nie ma sekwencji GAATTC. Szukaj sześciu liter: G A A T T C.',el);
+  });
+}
+
+function taskCell(el){
+  const O=[
+    {k:'mem',n:'Błona komórkowa',q:'Oddziela wnętrze komórki od otoczenia i kontroluje, co wchodzi i wychodzi.',ok:'Błona to podwójna warstwa lipidów z białkami transportowymi.'},
+    {k:'nuc',n:'Jądro komórkowe',q:'Przechowuje DNA w chromosomach. Tu zachodzi replikacja i transkrypcja.',ok:'U człowieka jądro zawiera 46 chromosomów.'},
+    {k:'er',n:'Siateczka śródplazmatyczna szorstka',q:'Sieć błon, w której nowe białka są fałdowane i wysyłane dalej.',ok:'„Szorstka”, bo jest pokryta rybosomami.'},
+    {k:'rib',n:'Rybosomy',q:'Tu mRNA jest tłumaczone na łańcuch aminokwasów.',ok:'Rybosomy zbudowane są z rRNA i białek.'},
+    {k:'mit',n:'Mitochondria',q:'Wytwarzają ATP, czyli energię dla wszystkich procesów w komórce.',ok:'Mitochondria mają własne, koliste DNA, odziedziczone po matce.'}];
+  const order=[3,0,4,1,2];let i=0;
+  el.innerHTML=head('Zadanie','Złóż żywą komórkę','<span id="cq"></span>')+
+    `<figure class="art" id="cell">${cellSVG(false)}</figure><div class="cards" id="oc">${order.map(k=>`<button class="card" data-k="${O[k].k}">${O[k].n}</button>`).join('')}</div><p class="fb" aria-live="polite"></p>`;
+  const ask=()=>{$('#cq',el).textContent=`Funkcja ${i+1} z 5: ${O[i].q}`;Guide.say(`Funkcja ${i+1}: ${O[i].q}`)};
+  ask();
+  $('#oc',el).addEventListener('click',e=>{
+    const c=e.target.closest('.card');if(!c||c.disabled||i>=O.length)return;
+    if(c.dataset.k===O[i].k){c.disabled=true;$(`[data-o="${O[i].k}"]`,el).classList.add('on');api.good();fb(el,`${O[i].n}. ${O[i].ok}`,'ok');i++;
+      if(i<O.length)setTimeout(ask,RM?0:900);else develop()}
+    else api.bad(`To nie ta struktura. Szukamy elementu, który: ${O[i].q.charAt(0).toLowerCase()+O[i].q.slice(1)}`,el);
+  });
+  function develop(){
+    $('#cq',el).textContent='Komórka jest kompletna.';
+    Guide.say('Komórka żyje! Ma błonę, jądro z DNA, rybosomy, siateczkę i mitochondria. Teraz zobacz, jak z jednej komórki powstaje organizm.');
+    const d=document.createElement('div');d.style.cssText='display:flex;flex-direction:column;gap:12px';
+    d.innerHTML=head('Finał','Od zygoty do organizmu','Każdy podział kopiuje całe DNA. Potem komórki różnicują się, czyli włączają różne geny.')+`<figure class="art"><svg viewBox="0 0 360 220" id="emb" role="img" aria-label="Rozwój zarodka"></svg></figure><p class="eyebrow" id="elab"></p><div class="nav"><button class="btn" id="div">Podziel komórkę</button></div>`;
+    el.appendChild(d);d.scrollIntoView({behavior:RM?'auto':'smooth',block:'nearest'});
+    const st=[[1,'Zygota: 1 komórka','Zygota powstaje z połączenia komórki jajowej i plemnika. Ma pełny zestaw DNA od obojga rodziców.'],[2,'2 komórki','Pierwszy podział mitotyczny. Obie komórki mają identyczne DNA.'],[4,'4 komórki','Kolejny podział. Komórki wciąż są totipotentne, czyli każda mogłaby dać cały organizm.'],[8,'8 komórek','Osiem komórek, a zarodek nadal nie jest większy od zygoty.'],[16,'Morula: 16 komórek','Morula, po łacinie mała morwa. Wkrótce komórki zaczną się różnicować.'],[0,'Różnicowanie','Te same geny, różne decyzje: neuron, komórka mięśniowa i krwinka czerwona włączają inne fragmenty tego samego DNA.']];
+    let s=0;const svg=$('#emb',d);
+    const draw=()=>{const [n,l,t]=st[s];$('#elab',d).textContent=l;Guide.say(t);
+      if(n){const rc=n===1?60:58/Math.sqrt(n)*1.15,k=rc*1.75;let h='';for(let j=0;j<n;j++){const r=n===1?0:k*Math.sqrt(j+.5)*.62,a=j*2.39996;h+=`<circle cx="${(180+r*Math.cos(a)).toFixed(1)}" cy="${(110+r*Math.sin(a)).toFixed(1)}" r="${rc.toFixed(1)}" class="pop" style="fill:var(--panel);stroke:var(--p);stroke-width:2.5"/><circle cx="${(180+r*Math.cos(a)).toFixed(1)}" cy="${(110+r*Math.sin(a)).toFixed(1)}" r="${(rc*.32).toFixed(1)}" style="fill:var(--p);opacity:.6"/>`}svg.innerHTML=h}
+      else svg.innerHTML=`<g class="pop"><circle cx="60" cy="100" r="18" style="fill:var(--g)"/><path d="M60 82V40M60 118V180M42 100H12M78 100H110M48 88L26 60M72 112L96 150" style="stroke:var(--g);stroke-width:3;stroke-linecap:round"/><text x="60" y="206" class="lbl-a">neuron</text></g>
+        <g class="pop"><path d="M140 100C160 70 220 70 240 100C220 130 160 130 140 100Z" style="fill:var(--t);opacity:.85"/><path d="M150 92H230M150 100H230M150 108H230" style="stroke:var(--bg);stroke-width:1.5;opacity:.6"/><text x="190" y="206" class="lbl-a">komórka mięśniowa</text></g>
+        <g class="pop"><circle cx="310" cy="100" r="30" style="fill:var(--t)"/><circle cx="310" cy="100" r="13" style="fill:var(--bg);opacity:.35"/><text x="310" y="206" class="lbl-a">erytrocyt</text></g>`;
+    };
+    draw();
+    $('#div',d).addEventListener('click',ev=>{s++;if(s<st.length){draw();if(s===st.length-1)ev.target.textContent='Zakończ'}else{ev.target.remove();stageDone(7,'Z jednej zygoty powstaje około 30 bilionów komórek. Każda niesie ten sam genom: około 3 miliardy par zasad i 20 tysięcy genów kodujących białka.')}});
+  }
+}
+
+/* ---------- flow ---------- */
+function updHUD(){
+  $('#score').innerHTML=`${state.score} <small>pkt</small>`;
+  const unlocked=firstOpen();
+  $('#steps').innerHTML=STAGES.map((s,i)=>`<li><button data-i="${i}" class="${state.done[i]?'done':''} ${state.started&&i===state.stage&&!onFinale?'cur':''}" ${i>unlocked?'disabled':''} title="${i+1}. ${s.short}" aria-label="Etap ${i+1}: ${s.short}">${state.done[i]?'✓':i+1}</button></li>`).join('');
+}
+function firstOpen(){for(let i=0;i<STAGES.length;i++)if(!state.done[i])return i;return STAGES.length-1}
+let onFinale=false;
+function scrollTop(){const s=$('#stage');const y=s.getBoundingClientRect().top+scrollY-90;if(scrollY>y)scrollTo({top:Math.max(0,y),behavior:RM?'auto':'smooth'})}
+function renderStart(){
+  stopAnims();onFinale=false;
+  const prog=state.done.filter(Boolean).length;
+  $('#stage').innerHTML=`<div class="hero">
+    <p class="eyebrow">Interaktywny kurs · biologia molekularna · bioinformatyka · biotechnologia</p>
+    <h1>Od kodu DNA<br>do <span>żywego organizmu</span></h1>
+    <p class="lead">Zbudujesz nukleotydy, złożysz podwójną helisę, przepiszesz gen na mRNA i przetłumaczysz go na białko. Potem znajdziesz mutację jak bioinformatyk, wytniesz gen jak biotechnolog i złożysz żywą komórkę.</p>
+  </div>
+  <figure class="art">${artHelix('ATGGTGCACCTGACTCCTGAGGAG')}</figure>
+  <ol class="path">${STAGES.map((s,i)=>`<li class="${state.done[i]?'ok':''}"><div><b>${s.short}</b><span>${s.field}</span></div></li>`).join('')}</ol>
+  <div class="nav"><button class="btn big" id="go">${prog?`Kontynuuj: etap ${firstOpen()+1}`:'Rozpocznij'}</button>${prog?'<button class="btn ghost" id="reset">Zacznij od nowa</button>':''}</div>
+  <p class="hint">Lektorka czyta teksty na głos syntezatorem mowy przeglądarki. Możesz ją wyciszyć przyciskiem „Lektor” u góry. Postęp zapisuje się w tej przeglądarce.</p>`;
+  hydrate($('#stage'));updHUD();
+  $('#go').addEventListener('click',()=>{
+    const first=!state.started;state.started=true;save();
+    Guide.say(first?'Witaj w Laboratorium Życia! Nazywam się doktor Ada Helisa i jestem genetyczką. Razem przejdziemy drogę od pojedynczej cząsteczki DNA do żywego organizmu. Za poprawne rozwiązania zdobywasz punkty. Zaczynamy!':'Witaj z powrotem! Wracamy do pracy w laboratorium.');
+    setTimeout(()=>renderStage(firstOpen()),first?(Voice.on&&Voice.ok?9000:1800):300);
+    $('#go').disabled=true;
+  });
+  const r=$('#reset');if(r)r.addEventListener('click',()=>{Object.assign(state,{stage:0,done:[],score:0,mistakes:0,started:false});save();renderStart();Guide.say('Postęp wyczyszczony. Zaczynamy od nowa!')});
+}
+let skipTimer=null;
+function renderStage(i){
+  clearTimeout(skipTimer);stopAnims();onFinale=false;state.stage=i;state.started=true;save();updHUD();
+  const S=STAGES[i];
+  $('#stage').innerHTML=`<div class="st-head"><p class="eyebrow">Etap ${i+1} z ${STAGES.length} · ${S.field}</p><h2>${S.title}</h2></div><div id="body"></div>`;
+  lesson(i,0);scrollTop();
+}
+function lesson(i,k){
+  stopAnims();const S=STAGES[i],sl=S.slides[k],last=k===S.slides.length-1;
+  $('#body').innerHTML=`<div class="lesson"><figure class="art">${sl.art()}</figure><div class="ltext"><p class="slnum">Lekcja ${k+1} / ${S.slides.length}</p><p>${sl.t}</p></div>
+  <div class="nav">${k>0?'<button class="btn ghost" id="prev">Wstecz</button>':''}<button class="btn" id="next">${last?'Przejdź do zadania':'Dalej'}</button></div></div>`;
+  hydrate($('#body'));
+  Guide.say(`<b>${S.short}</b> · lekcja ${k+1} z ${S.slides.length}. Czytam tekst z tablicy.`,sl.t);
+  $('#next').addEventListener('click',()=>last?startTask(i):lesson(i,k+1));
+  const p=$('#prev');if(p)p.addEventListener('click',()=>lesson(i,k-1));
+}
+function startTask(i){
+  stopAnims();const S=STAGES[i];
+  $('#body').innerHTML='<div class="task" id="task"></div>';
+  Guide.say(S.intro);S.task($('#task'));scrollTop();
+}
+function stageDone(i,text){
+  state.done[i]=true;api.good(20);
+  const last=i===STAGES.length-1;
+  const box=document.createElement('div');box.className='done-card';
+  box.innerHTML=`<p class="eyebrow">Etap ${i+1} ukończony · +20 pkt</p><h3>${STAGES[i].short} ✓</h3><p>${text}</p><div class="nav"><button class="btn" id="goNext">${last?'Odbierz certyfikat':'Następny etap: '+STAGES[i+1].short}</button></div>`;
+  $('#task').appendChild(box);setTimeout(()=>box.scrollIntoView({behavior:RM?'auto':'smooth',block:'nearest'}),50);
+  Guide.say(text);
+  $('#goNext',box).addEventListener('click',()=>last?renderFinale():renderStage(i+1));
+}
+function renderFinale(){
+  stopAnims();onFinale=true;updHUD();
+  const m=state.mistakes,rank=m<=4?'Mistrzyni / Mistrz Biotechnologii':m<=12?'Biolog molekularny':'Młody badacz';
+  $('#stage').innerHTML=`<div class="cert">
+    <p class="eyebrow">Laboratorium Życia · certyfikat ukończenia</p>
+    <h2>Od DNA do organizmu</h2>
+    <label class="sr" for="cname">Twoje imię</label>
+    <input id="cname" placeholder="Wpisz swoje imię" value="${(state.name||'').replace(/"/g,'&quot;')}" maxlength="40">
+    <p class="rank">${rank}</p>
+    <div class="stats"><div><b>${state.score}</b><span>punktów</span></div><div><b>${m}</b><span>pomyłek</span></div><div><b>8/8</b><span>etapów</span></div></div>
+    <p class="hint" style="text-align:center">Nukleotyd · helisa · replikacja · transkrypcja · translacja · bioinformatyka · biotechnologia · komórka</p>
+    <p class="hint" style="text-align:center">Wydała: dr Ada Helisa · ${new Date().toLocaleDateString('pl-PL')}</p>
+  </div>
+  <figure class="art">${artHelix('GATTACACCGGTTAACGCATG')}</figure>
+  <div class="nav"><button class="btn" id="again">Zagraj ponownie</button><button class="btn ghost" id="home">Mapa kursu</button></div>`;
+  hydrate($('#stage'));scrollTop();
+  $('#cname').addEventListener('input',e=>{state.name=e.target.value;save()});
+  Guide.say(`Gratulacje! Przeszliśmy razem całą drogę: od pojedynczego nukleotydu do organizmu. Zdobyto ${state.score} punktów i tytuł: ${rank}. Dziękuję za wspólną pracę w laboratorium!`,`Gratulacje! Przeszliśmy razem całą drogę: od pojedynczego nukleotydu do organizmu. Zdobywasz tytuł: ${rank}. Dziękuję za wspólną pracę w laboratorium!`);
+  $('#again').addEventListener('click',()=>{Object.assign(state,{stage:0,done:[],score:0,mistakes:0,started:true});save();renderStage(0)});
+  $('#home').addEventListener('click',renderStart);
+}
+
+/* ---------- wiring ---------- */
+$('#steps').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;renderStage(+b.dataset.i)});
+$('#voiceBtn').addEventListener('click',()=>setVoice(!Voice.on));
+$('#repeatBtn').addEventListener('click',()=>{if(!Voice.on)setVoice(true);else Voice.speak(speechify(Guide.lastS))});
+$('#stopBtn').addEventListener('click',()=>Voice.stop());
+$('#voiceSel').addEventListener('change',e=>{const val=e.target.value;if(val==='__clips'){Voice.useClips=true}else{const v=(Voice.list||[]).find(x=>x.name===val);if(!v)return;Voice.voice=v;Voice.useClips=false}try{localStorage.setItem(KEY+'-vname',val)}catch(er){}updVoiceNote();if(Voice.on)Voice.speak(speechify('Cześć, tak teraz brzmię.'))});
+Voice.init();setVoice(Voice.on);Voice.stop();
+['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>Voice.unlock(),{capture:true,passive:true}));
+renderStart();
+</script>
+
+</body>
+</html>
